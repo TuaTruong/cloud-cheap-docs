@@ -1,219 +1,184 @@
 ---
 title: "Product families"
-description: "Phân loại sản phẩm theo tính năng — contract ổn định, độc lập với backend"
+description: "Sản phẩm được phân loại theo tính năng — danh sách family bạn discover ở runtime"
 ---
 
-## Vì sao có family?
+## Family là gì?
 
-Sản phẩm trong catalog rất nhiều SKU và **có thể được thay đổi backend
-bất cứ lúc nào** (thêm/bớt nhà cung cấp, đổi provider, gộp/tách SKU).
-Để code phía bạn **không phải sửa khi backend đổi**, mỗi sản phẩm được
-gắn vào một **family** — định nghĩa **theo tính năng** chứ không theo
-backend.
+**Family** là cách hệ thống phân loại sản phẩm thành các **nhóm có cùng
+tính năng và surface action**. Mỗi sản phẩm thuộc đúng một family.
+
+Ví dụ: hai gói proxy khác nhau (khác giá, khác region, khác nhà cung
+cấp phía sau) nếu có cùng đặc tính (vd "IPv4 datacenter, IP cố định")
+sẽ thuộc cùng family — UI và logic phía bạn xử lý chúng **giống hệt
+nhau**.
 
 <Info>
-Family là **contract về tính năng và surface action**, không phải về
-nguồn cung. Cùng một family có thể được phục vụ bởi nhiều backend khác
-nhau, hoặc tạm thời không có backend nào — phụ thuộc danh mục sản phẩm
-hiện tại.
+Family là **contract về tính năng**, không liên quan đến backend. Hệ
+thống có thể thêm/bớt family, thêm/bớt nhà cung cấp phía sau mà
+không thông báo trước — client phải đọc danh sách family active từ
+**response runtime**, không hardcode.
 </Info>
-
-Mọi response catalog (`/fetch-proxy-products`, `/fetch-vps-products`) và
-mọi record proxy/VPS (`/customer/proxy/list`, `/customer/vps/list`) đều có
-hai field:
-
-| Field | Kiểu | Ví dụ |
-|---|---|---|
-| `family` | string | `"Proxy IPv4 Datacenter"` |
-| `family_code` | string (snake_case) | `"proxy_ipv4_datacenter"` |
-
-**`family_code` là khoá ổn định** dùng làm switch logic phía code.
-`family` là tên hiển thị — có thể điều chỉnh cho marketing.
-
-## Family Proxy
-
-<CardGroup cols={2}>
-  <Card title="Proxy IPv4 Datacenter" icon="globe">
-    `family_code`: `proxy_ipv4_datacenter`<br/>
-    IPv4 từ datacenter, **IP cố định** trong vòng đời proxy. Đa region.
-    Phù hợp: scrape, automation, geo-test cần IP ổn định.
-  </Card>
-  <Card title="Proxy IPv6" icon="hashtag">
-    `family_code`: `proxy_ipv6`<br/>
-    IPv6 (hỗ trợ rotating). Đa region, đa giao thức.
-    Phù hợp: target hỗ trợ IPv6, volume lớn, chi phí thấp.
-  </Card>
-  <Card title="Proxy Residential Rotating" icon="arrows-rotate">
-    `family_code`: `proxy_residential_rotating`<br/>
-    IP dân dụng, **xoay tự động** mỗi yêu cầu hoặc theo session.
-    Phù hợp: scrape khó, target có anti-bot mạnh.
-  </Card>
-  <Card title="Proxy Residential Static" icon="house">
-    `family_code`: `proxy_residential_static`<br/>
-    IP dân dụng, **giữ nguyên IP** (sticky). Đổi auth được, không
-    đổi IP. Phù hợp: social media, giữ phiên đăng nhập lâu.
-  </Card>
-</CardGroup>
-
-<Card title="Proxy Bandwidth (GB)" icon="gauge" href="/proxy/bandwidth/config-options">
-  `family_code`: `proxy_bandwidth`<br/>
-  Trả tiền **theo dung lượng truyền tải** (GB) thay vì theo IP × thời
-  gian. Sinh proxy từ pool theo filter (country, ASN, rotating/sticky).
-  Phù hợp: nhu cầu linh hoạt, traffic không đều, volume lớn.
-</Card>
-
-## Family VPS
-
-<CardGroup cols={2}>
-  <Card title="VPS Standard" icon="server">
-    `family_code`: `vps_standard`<br/>
-    Dòng VPS đầy đủ tính năng nhất. **Có** Console, Network info,
-    Credentials, Change password, Upgrade bandwidth.
-  </Card>
-  <Card title="VPS Pro" icon="rocket">
-    `family_code`: `vps_pro`<br/>
-    Pricing trọn gói cho addon (CPU/RAM/Disk). **Không** có Console /
-    Network info / Change password (qua reinstall thay thế).
-  </Card>
-  <Card title="VPS Basic" icon="cube">
-    `family_code`: `vps_basic`<br/>
-    Dòng VPS giá tiết kiệm, đa region. Có Power control + Config
-    (reinstall, reset password, change IP) + Upgrade.
-  </Card>
-  <Card title="VPS Performance" icon="bolt">
-    `family_code`: `vps_performance`<br/>
-    VPS cấu hình mạnh (CPU/RAM cao). Surface action giống Basic.
-  </Card>
-  <Card title="VPS Streaming" icon="video">
-    `family_code`: `vps_streaming`<br/>
-    Tối ưu băng thông + region cho live streaming. Surface action giống
-    Basic.
-  </Card>
-  <Card title="VPS Custom" icon="sliders">
-    `family_code`: `vps_custom`<br/>
-    Cấu hình tự chỉnh CPU/RAM/Disk khi mua. Giá tính theo addon.
-  </Card>
-</CardGroup>
-
-<Card title="VPS Promo" icon="tag">
-  `family_code`: `vps_promo`<br/>
-  Gói khuyến mãi giá rẻ, có giới hạn về region/OS. Surface action giống
-  Basic.
-</Card>
-
-## Khi family tạm thời không có sản phẩm
-
-Vì family là **contract về tính năng**, đôi khi family được định nghĩa
-trong tài liệu nhưng **tạm thời không có SKU nào active** trong catalog
-(ví dụ: chúng tôi đang đổi nhà cung cấp cho dòng đó).
-
-Khi đó:
-
-- `GET /fetch-proxy-products` hoặc `GET /fetch-vps-products` **không trả
-  về group cho family** đó.
-- UI phía bạn nên **degrade gracefully** — ẩn tab, không hiển thị "empty
-  state" với family code không có data.
-- Khi backend được khôi phục, family group sẽ xuất hiện trở lại — không
-  cần thay đổi code phía bạn.
-
-```jsx
-// Tốt: render theo data trả về
-catalog.data.forEach(group => {
-  renderTab(group.family, group.family_code, group.plans);
-});
-
-// Tránh: hard-code family_code list
-const FAMILIES = ['proxy_ipv4_datacenter', 'proxy_ipv6', /* ... */];
-FAMILIES.forEach(fc => { /* không nên */ });
-```
 
 ## Cách dùng family
 
-### 1. Lọc catalog theo family
+### 1. Discover family ở runtime
+
+Đừng hardcode danh sách family — gọi catalog endpoint để biết family
+nào đang active:
 
 ```bash
-curl 'https://cloud-cheap.com/api/v2/fetch-proxy-products' \
-  -H 'Authorization: Bearer <token>'
+GET /api/v2/fetch-proxy-products
+GET /api/v2/fetch-vps-products
 ```
 
-Response group theo `family_code`:
+Response trả về array các **family group**, mỗi group có `family`
+(tên hiển thị) + `family_code` (machine code) + `plans` (danh sách
+plan trong family).
 
 ```json
 {
   "success": true,
   "data": [
     {
-      "family": "Proxy IPv4 Datacenter",
-      "family_code": "proxy_ipv4_datacenter",
+      "family": "<Tên hiển thị>",
+      "family_code": "<machine_code>",
       "plans": [
-        { "id": 10, "name": "...", "price": 50000, /* ... */ }
+        { "id": 10, "name": "...", "price": 50000, "capabilities": { /* ... */ }, /* ... */ }
       ]
     },
     {
-      "family": "Proxy Residential Rotating",
-      "family_code": "proxy_residential_rotating",
+      "family": "<Tên family khác>",
+      "family_code": "<machine_code_khác>",
       "plans": [/* ... */]
     }
   ]
 }
 ```
 
-Phía UI render tab theo family, không hardcode mapping family ↔ backend.
+### 2. Render UI động theo response
 
-### 2. Phân biệt logic theo family_code
-
-```js
-function shouldShowChangeIpButton(proxy) {
-  return proxy.capabilities.change_ip.can === true;
-}
-
-function priceRangeForFamily(familyCode) {
-  switch (familyCode) {
-    case 'proxy_residential_static':
-    case 'proxy_residential_rotating':
-      return { min: 80000, max: 150000 };
-    case 'proxy_ipv4_datacenter':
-      return { min: 40000, max: 60000 };
-    case 'proxy_bandwidth':
-      return { min: 0, max: null };
-    default:
-      return null;
-  }
+```jsx
+function ProductCatalog({ catalog }) {
+  return catalog.data.map(group => (
+    <Tab key={group.family_code} title={group.family}>
+      {group.plans.map(plan => (
+        <PlanCard plan={plan} family={group.family_code} />
+      ))}
+    </Tab>
+  ));
 }
 ```
 
-### 3. Quyết định flow tích hợp
+UI **không cần biết** family nào tồn tại trước — render theo data trả về.
 
-Mỗi family có flow mua + quản lý hơi khác:
+### 3. Quyết định hành vi theo `family_code`
 
-- **Proxy non-bandwidth**: mua theo `quantity` × period → trả về danh sách
-  proxy có `expired_at`.
-- **Proxy Bandwidth**: mua theo `bandwidth_gb` → mở gói GB → **generate**
-  proxy list từ pool theo nhu cầu.
-- **VPS**: mua theo `period` + config → trả về 1 record VPS, sau đó có
-  thể `power-control`, `config`, `upgrade`.
+Mỗi plan trong group có `family_code` để bạn dispatch logic:
 
-Mỗi flow có trang riêng trong tài liệu này.
+```js
+function flowForFamily(familyCode) {
+  // Logic theo từng family_code — không hardcode list
+  // Family chưa biết: fallback an toàn
+}
 
-## Lưu ý quan trọng
+function pricingNoteFor(familyCode) {
+  // Hiển thị note đặc thù theo family_code
+  // Không assume family_code cụ thể nào sẽ tồn tại
+}
+```
+
+### 4. Quyết định bằng `capabilities`, không qua `family_code`
+
+Khi muốn biết action nào áp dụng cho từng record proxy/VPS, đừng switch
+trên `family_code` — đọc trực tiếp `capabilities`:
+
+```js
+// Tốt
+if (proxy.capabilities.change_ip.can) { showChangeIpButton(); }
+
+// Không nên
+if (proxy.family_code === 'proxy_ipv4_datacenter') { showChangeIpButton(); }
+```
+
+Lý do: `capabilities` đã áp **runtime override** (state thực của record),
+còn `family_code` chỉ cho biết loại sản phẩm.
+
+## Khi family tạm thời không có sản phẩm
+
+Đôi khi một family được hệ thống định nghĩa nhưng **không có SKU nào
+active** trong catalog (vd: đang chuyển nhà cung cấp, hoặc nhà cung cấp
+tạm dừng).
+
+Khi đó:
+
+- `fetch-*-products` **không trả về group cho family** đó.
+- UI phía bạn nên **degrade gracefully** — không render tab rỗng, không
+  hardcode list family expected.
+- Khi backend khôi phục, family group sẽ xuất hiện trở lại — client
+  không cần update.
+
+```js
+// Code này robust trước mọi thay đổi family list
+catalog.data.forEach(group => {
+  if (group.plans.length === 0) return; // bỏ qua family rỗng (hiếm)
+  renderTab(group.family, group.family_code, group.plans);
+});
+```
+
+## Cấu trúc flow cơ bản theo loại sản phẩm
+
+Dù family cụ thể có thể đổi, **flow chung** cho mua / quản lý vẫn ổn định:
+
+<CardGroup cols={3}>
+  <Card title="Proxy non-bandwidth" icon="globe">
+    Mua theo `quantity` × period → trả về danh sách proxy có `expired_at`.
+    Hành động trên từng proxy theo `capabilities` runtime.
+  </Card>
+  <Card title="Proxy Bandwidth" icon="gauge">
+    Mua theo `bandwidth_gb` → mở một gói GB → **generate** proxy list
+    từ pool theo filter (country, ASN, sticky/rotating).
+  </Card>
+  <Card title="VPS" icon="server">
+    Mua theo `period` + config → trả về VPS record. Power control,
+    reinstall, upgrade — đều theo `capabilities` runtime.
+  </Card>
+</CardGroup>
+
+Phân biệt 3 flow này qua field `type` của plan trong catalog
+(`"proxy"` / `"vps"`) và flag `capabilities.bandwidth_package.is_bandwidth`
+(cho proxy bandwidth).
+
+## Best practice
 
 <Info>
-Family **ổn định trong thời gian dài** và **độc lập với backend**. Code
-client nên dùng `switch (family_code)` với `default` xử lý fallback an
-toàn (vd "Sản phẩm này chưa hỗ trợ"). Khi chúng tôi thêm family mới,
-client cũ vẫn chạy bình thường — chỉ không hiển thị family mới cho đến
-khi code update.
+Client cần **3 nguyên tắc** khi tích hợp:
+
+1. **Discover** family list từ catalog runtime — không hardcode.
+2. **Render** UI động theo response — không assume family nào sẽ tồn tại.
+3. **Decision** dùng `capabilities` không qua `family_code` cụ thể.
 </Info>
 
 <Warning>
-**Không bao giờ** parse / đoán backend từ `name`, `plan`, hay
-`external_*` của sản phẩm. Chỉ dùng `family_code` + `capabilities` để
-quyết định logic. Backend có thể thay đổi mà không thông báo trước —
-contract chỉ là family + capability.
+**Không parse `name` / `plan` / `external_*`** của sản phẩm để đoán
+backend. Hệ thống cố tình ẩn thông tin đó — backend có thể đổi mà không
+báo trước.
 </Warning>
 
 <Warning>
-**Không hardcode danh sách family_code** trong client. Lấy danh sách
-family đang active từ response `fetch-*-products` ở runtime, render
-động.
+**Không hardcode danh sách `family_code`** trong client. Lấy danh sách
+family đang active từ `fetch-*-products` mỗi lần render, hoặc cache
+ngắn (5–15 phút).
 </Warning>
+
+<Warning>
+Một số `family_code` có thể bị **xóa** trong tương lai khi sản phẩm
+ngừng bán. Client phải handle case `family_code` không nhận diện
+được (fallback hiển thị plan bằng `name` + `capabilities`).
+</Warning>
+
+## Liên quan
+
+- [Capabilities](/concepts/capabilities) — flag action runtime cho mỗi record
+- [Catalog Proxy](/catalog/fetch-proxy-products) — endpoint discover proxy families
+- [Catalog VPS](/catalog/fetch-vps-products) — endpoint discover VPS families

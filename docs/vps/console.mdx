@@ -1,6 +1,6 @@
 ---
 title: "Mở console VNC"
-description: "Lấy URL truy cập console VNC/noVNC — chỉ VPS Standard"
+description: "Lấy URL truy cập console VNC/noVNC"
 ---
 
 `POST /api/v2/customer/vps/console`
@@ -9,7 +9,7 @@ Mở truy cập console (VNC / noVNC) đến VPS. Trả về URL truy cập + th
 tin xác thực tạm thời. URL có hạn (thường 1–4 giờ).
 
 <Warning>
-**Chỉ áp dụng cho VPS Standard** — `capabilities.console.can = true`.
+**Chỉ áp dụng cho VPS có `capabilities.console.can = true`**.
 Các family khác trả `422 feature_unavailable`.
 </Warning>
 
@@ -60,7 +60,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/console' \
 |---|---|---|
 | 422 | `validation_failed` | `id` thiếu. |
 | 403 | `forbidden` | VPS không thuộc user. |
-| 422 | `feature_unavailable` | VPS không phải family Standard, hoặc `capabilities.console.can = false`. |
+| 422 | `feature_unavailable` | `capabilities.console.can = false` cho VPS này. |
 | 422 | `feature_unavailable` | `reason: requires_ipv4` — VPS chưa có `main_ipv4`. |
 | 500 | `internal_error` | Lỗi server. |
 

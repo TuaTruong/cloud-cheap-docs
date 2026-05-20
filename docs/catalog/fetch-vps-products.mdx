@@ -8,7 +8,7 @@ description: "Catalog các gói VPS active, nhóm theo product family, kèm capa
 Trả về toàn bộ sản phẩm VPS đang active, **nhóm theo product family**.
 Mỗi plan có sẵn `family`, `family_code` và `capabilities` mặc định.
 
-**Áp dụng cho**: 7 family VPS — Standard, Pro, Basic, Performance, Streaming, Custom, Promo
+**Áp dụng cho**: Mọi family VPS
 **Auth**: Không bắt buộc
 **Rate limit**: Không có
 
@@ -54,7 +54,7 @@ Mỗi plan:
 | `family` / `family_code` | string | (Trùng group) |
 | `capabilities` | object | 9 capability flag mặc định cho family VPS. |
 | `client_features.fixed_addon_pricing` | boolean | Pricing fixed cho upgrade? |
-| `client_features.disk_step` | integer | Bước upgrade disk (GB) — `1` cho hầu hết, `10` cho VPS Pro. |
+| `client_features.disk_step` | integer | Bước upgrade disk (GB) — đọc giá trị này để hiển thị đúng UI control, không hardcode theo family. |
 | `badges` | string[] | Tag marketing: `"gpu"`, `"best_seller"`, … |
 | `options` | object | OS, region khả dụng. |
 

@@ -9,8 +9,8 @@ Yêu cầu đổi IP cho một proxy đang sử dụng. Có thể **miễn phí*
 tuỳ family + plan + state runtime — đọc `capabilities.change_ip` để biết
 chi phí trước khi gọi.
 
-**Áp dụng cho**: Proxy có `capabilities.change_ip.can = true` — **không**
-áp dụng cho Proxy IPv6, Proxy Residential Static, Proxy Bandwidth
+**Áp dụng cho**: Proxy có `capabilities.change_ip.can = true`. Một số
+family không hỗ trợ — đọc capability runtime trước khi cho user click.
 **Auth**: Bearer token
 **Rate limit**: Không có
 

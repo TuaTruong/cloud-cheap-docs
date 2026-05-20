@@ -28,7 +28,7 @@ Phải có **ít nhất một** trong `upgrade_cpu`, `upgrade_ram`, `upgrade_dis
 `upgrade_disk` phải là **bội số của `capabilities.upgrade.disk_step_gb`**
 của VPS đang upgrade. Đọc giá trị này từ response của
 [`/customer/vps/list`](/vps/list) tại runtime — không hardcode.
-Với một số family (vd VPS Pro), `disk_step_gb` có thể lớn hơn 1.
+Với một số family, `disk_step_gb` có thể lớn hơn 1 (vd 5, 10) — luôn đọc giá trị runtime, không hardcode.
 </Warning>
 
 ### Ví dụ — thêm 2 CPU + 4 GB RAM

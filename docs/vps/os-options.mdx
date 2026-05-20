@@ -61,7 +61,7 @@ curl 'https://cloud-cheap.com/api/v2/customer/vps/4567/os-options' \
 
 ## Business notes
 
-- Danh sách OS tuỳ thuộc provider + plan. Một số plan giới hạn (vd VPS Streaming chỉ Windows + một số Linux).
+- Danh sách OS tuỳ thuộc plan. Một số plan giới hạn OS theo mục đích sử dụng — đọc `data.available[]` runtime, không hardcode.
 - Cài Windows yêu cầu **RAM tối thiểu 2 GB** — nếu VPS RAM thấp hơn, Windows không xuất hiện trong list.
 - Để dùng OS từ list: gọi [`config` với `action=reinstall_custom_os` + `os_version=<id từ list>`](/vps/config).
 

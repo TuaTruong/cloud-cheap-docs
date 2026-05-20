@@ -1,6 +1,6 @@
 ---
 title: "Nâng tốc độ mạng VPS"
-description: "Nâng bandwidth speed (Mbps) cho VPS — chỉ VPS Standard"
+description: "Nâng bandwidth speed (Mbps) cho VPS"
 ---
 
 `POST /api/v2/customer/vps/upgrade-bandwidth`
@@ -9,7 +9,7 @@ Nâng cấp tốc độ cổng mạng (Mbps) cho VPS. Khác với [`/vps/upgrade
 (nâng CPU/RAM/Disk/IP), endpoint này chỉ thay đổi `bandwidth.speed_mbps`.
 
 <Warning>
-**Chỉ áp dụng cho VPS Standard** — `capabilities.upgrade_bandwidth.can = true`.
+**Chỉ áp dụng cho VPS có `capabilities.upgrade_bandwidth.can = true`**.
 </Warning>
 
 **Auth**: Bearer token
@@ -58,7 +58,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade-bandwidth' \
 |---|---|---|
 | 422 | `validation_failed` | `bandwidth` thiếu hoặc ngoài khoảng cho phép (min/max). |
 | 403 | `forbidden` | VPS không thuộc user. |
-| 422 | `feature_unavailable` | Không phải VPS Standard. |
+| 422 | `feature_unavailable` | Capability không khả dụng cho VPS này (xem `capabilities`). |
 | 503 | `internal_error` | Số dư không đủ. |
 | 200 | `request_failed` | Provider từ chối. |
 | 500 | `internal_error` | Lỗi server. |
