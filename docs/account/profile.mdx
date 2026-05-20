@@ -22,13 +22,13 @@ Không cần body. Token đính kèm trong header `Authorization`.
 <CodeGroup>
 
 ```bash cURL
-curl 'https://cloud-cheap.com/api/v2/customer/profile' \
+curl 'https://app.cloud-cheap.com/api/v2/customer/profile' \
   -H 'Authorization: Bearer 1|abc...' \
   -H 'Accept: application/json'
 ```
 
 ```php PHP
-$ch = curl_init('https://cloud-cheap.com/api/v2/customer/profile');
+$ch = curl_init('https://app.cloud-cheap.com/api/v2/customer/profile');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => [
@@ -79,7 +79,7 @@ lấy token mới, dùng [`POST /refresh-api-token`](/account/refresh-api-token)
     "phone": "0123456789",
     "balance": 500000,
     "affiliate_code": "RA-123",
-    "affiliate_link": "https://cloud-cheap.com/register?ref=RA-123",
+    "affiliate_link": "https://app.cloud-cheap.com/register?ref=RA-123",
     "bank_code": "VCB",
     "facebook": "https://fb.me/reseller-a",
     "telegram": "@reseller_a",

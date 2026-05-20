@@ -42,7 +42,7 @@ Trả về thông tin **proxy đang hoạt động** (IP, port, auth) cho key n�
 ### Ví dụ
 
 ```bash
-curl 'https://cloud-cheap.com/api/v2/proxy-access/abc123xyz/current'
+curl 'https://app.cloud-cheap.com/api/v2/proxy-access/abc123xyz/current'
 ```
 
 ### Response thành công
@@ -93,7 +93,7 @@ xem `capabilities.change_ip.cost`). Sau khi đổi, trả về thông tin proxy 
 ### Ví dụ
 
 ```bash
-curl 'https://cloud-cheap.com/api/v2/proxy-access/abc123xyz/new'
+curl 'https://app.cloud-cheap.com/api/v2/proxy-access/abc123xyz/new'
 ```
 
 ### Response thành công
@@ -132,14 +132,14 @@ curl 'https://cloud-cheap.com/api/v2/proxy-access/abc123xyz/new'
 
 ```js
 async function getCurrentProxy(apiKey) {
-  const res = await fetch(`https://cloud-cheap.com/api/v2/proxy-access/${apiKey}/current`);
+  const res = await fetch(`https://app.cloud-cheap.com/api/v2/proxy-access/${apiKey}/current`);
   const body = await res.json();
   if (!body.success) throw new Error(body.message);
   return body.data;
 }
 
 async function rotateAndGetNew(apiKey) {
-  const res = await fetch(`https://cloud-cheap.com/api/v2/proxy-access/${apiKey}/new`);
+  const res = await fetch(`https://app.cloud-cheap.com/api/v2/proxy-access/${apiKey}/new`);
   const body = await res.json();
   if (!body.success) {
     if (body.code === 'rate_limited') {

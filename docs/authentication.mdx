@@ -24,7 +24,7 @@ Có hai cách:
 
 ### Cách A — Qua portal (lần đầu)
 
-1. Đăng nhập [cloud-cheap.com](https://cloud-cheap.com).
+1. Đăng nhập [app.cloud-cheap.com](https://app.cloud-cheap.com).
 2. Vào **Account Settings → API Token**.
 3. Click **Tạo API Token mới** → copy token (chỉ hiện 1 lần).
 
@@ -33,7 +33,7 @@ Có hai cách:
 Nếu bạn đã có token cũ (hoặc còn session cookie), gọi:
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/refresh-api-token' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/refresh-api-token' \
   -H 'Authorization: Bearer <token-cu>' \
   -H 'Accept: application/json'
 ```
@@ -63,7 +63,7 @@ chung tài khoản, tất cả sẽ phải đổi sang token mới.
 <CodeGroup>
 
 ```bash cURL
-curl 'https://cloud-cheap.com/api/v2/customer/profile' \
+curl 'https://app.cloud-cheap.com/api/v2/customer/profile' \
   -H 'Authorization: Bearer 1|abcdef1234567890ghijklmnop' \
   -H 'Accept: application/json'
 ```

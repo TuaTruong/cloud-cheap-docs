@@ -20,7 +20,7 @@ danh sách đơn (vd dùng để phân loại "Khách A — Campaign Q2").
 | `user_notes` | string (≤ 2000 chars) | không | Nội dung note. Truyền `null` hoặc bỏ trống → xoá note. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/update-order-note' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/update-order-note' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "order_id": 1234, "user_notes": "Khách Z — campaign US" }'
@@ -67,7 +67,7 @@ một đơn có note riêng).
 | `notes` | string (≤ 2000 chars) | không | Nội dung note. Bỏ trống = xoá. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/update-proxy-note' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/update-proxy-note' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "assignment_id": 9876, "notes": "Account A1 — đang chạy auto" }'

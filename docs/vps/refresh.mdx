@@ -14,7 +14,7 @@ Tương tự [`/proxy/refresh`](/proxy/refresh), VPS cũng có 3 endpoint refres
 | `order_id` | integer | có | ID đơn cần refresh. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-order' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/refresh-order' \
   -H 'Authorization: Bearer 1|...' \
   -d '{ "order_id": 5001 }'
 ```
@@ -41,7 +41,7 @@ Refresh state cho tất cả VPS của user (nặng — chỉ dùng khi cần th
 Không cần body. Bearer token đủ.
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-list' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/refresh-vps-list' \
   -H 'Authorization: Bearer 1|...'
 ```
 
@@ -56,7 +56,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-list' \
 | `order_id` | integer | có | ID đơn cần refresh VPS. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-of-order' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/refresh-vps-of-order' \
   -H 'Authorization: Bearer 1|...' \
   -d '{ "order_id": 5001 }'
 ```

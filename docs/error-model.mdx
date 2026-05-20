@@ -131,7 +131,7 @@ Bạn chỉ cần viết một parser duy nhất cho tất cả endpoint.
 
 ```js
 async function callApi(endpoint, options = {}) {
-  const res = await fetch(`https://cloud-cheap.com/api/v2${endpoint}`, {
+  const res = await fetch(`https://app.cloud-cheap.com/api/v2${endpoint}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${API_TOKEN}`,

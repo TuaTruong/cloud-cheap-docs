@@ -56,7 +56,7 @@ endpoint này. Filter không hợp lệ sẽ trả về danh sách rỗng (khôn
 <CodeGroup>
 
 ```bash cURL
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies' \
   -H 'Authorization: Bearer 1|abcdef...' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -81,7 +81,7 @@ $payload = [
     'number_proxy'       => 50,
 ];
 
-$ch = curl_init('https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies');
+$ch = curl_init('https://app.cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
@@ -109,7 +109,7 @@ foreach ($response['data']['proxies'] as $proxy) {
 
 ```javascript Node fetch
 const res = await fetch(
-  'https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies',
+  'https://app.cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies',
   {
     method: 'POST',
     headers: {

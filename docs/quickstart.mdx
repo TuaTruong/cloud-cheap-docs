@@ -10,7 +10,7 @@ thành công `GET /api/v2/customer/profile` và lấy thông tin tài khoản.
 
 <Steps>
   <Step title="Đăng nhập">
-    Vào [cloud-cheap.com](https://cloud-cheap.com) và đăng nhập tài khoản
+    Vào [app.cloud-cheap.com](https://app.cloud-cheap.com) và đăng nhập tài khoản
     reseller.
   </Step>
   <Step title="Mở trang Account Settings">
@@ -37,7 +37,7 @@ Bạn có token, ví dụ:
 <CodeGroup>
 
 ```bash cURL
-curl -X GET 'https://cloud-cheap.com/api/v2/customer/profile' \
+curl -X GET 'https://app.cloud-cheap.com/api/v2/customer/profile' \
   -H 'Authorization: Bearer 1|abcdef1234567890ghijklmnop' \
   -H 'Accept: application/json'
 ```
@@ -47,7 +47,7 @@ curl -X GET 'https://cloud-cheap.com/api/v2/customer/profile' \
 
 $apiToken = '1|abcdef1234567890ghijklmnop';
 
-$ch = curl_init('https://cloud-cheap.com/api/v2/customer/profile');
+$ch = curl_init('https://app.cloud-cheap.com/api/v2/customer/profile');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => [
@@ -67,7 +67,7 @@ echo $body . "\n";
 ```javascript Node fetch
 const apiToken = '1|abcdef1234567890ghijklmnop';
 
-const res = await fetch('https://cloud-cheap.com/api/v2/customer/profile', {
+const res = await fetch('https://app.cloud-cheap.com/api/v2/customer/profile', {
   headers: {
     Authorization: `Bearer ${apiToken}`,
     Accept: 'application/json',
@@ -95,7 +95,7 @@ Response thành công (HTTP 200):
     "email": "reseller@example.com",
     "balance": 500000,
     "affiliate_code": "RA-123",
-    "affiliate_link": "https://cloud-cheap.com/register?ref=RA-123"
+    "affiliate_link": "https://app.cloud-cheap.com/register?ref=RA-123"
   },
   "meta": {}
 }

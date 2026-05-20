@@ -20,7 +20,7 @@ hoặc khi nghi ngờ data đơn stale.
 | `order_id` | integer | có | ID đơn cần refresh. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/refresh-order' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "order_id": 1234 }'
@@ -66,7 +66,7 @@ một số proxy bị missing data (vd `public_ip` rỗng do hệ thống chậm
 | `order_number` | string | có | Mã đơn (vd `"ORD-PROXY-001"`). Phải thuộc user. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order-proxies' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/refresh-order-proxies' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "order_number": "ORD-PROXY-001" }'
@@ -104,7 +104,7 @@ khi nghi ngờ data của 1 proxy đang stale.
 | `order_number` | string | có | Mã đơn chứa proxy. Phải thuộc user. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-proxy' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/proxy/refresh-proxy' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "proxy_id": 5678, "order_number": "ORD-PROXY-001" }'

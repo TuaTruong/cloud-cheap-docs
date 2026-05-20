@@ -34,7 +34,7 @@ Với một số group, `disk_step_gb` có thể lớn hơn 1 (vd 5, 10) — lu�
 ### Ví dụ — thêm 2 CPU + 4 GB RAM
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/upgrade' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -47,7 +47,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
 ### Ví dụ — thêm 20 GB disk
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/upgrade' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "id": 4567, "upgrade_disk": 20 }'

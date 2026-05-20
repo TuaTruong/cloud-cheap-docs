@@ -31,7 +31,7 @@ Nếu không có, request trả 422.
 ### Ví dụ — Reinstall OS hiện tại
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/config' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "id": 4567, "action": "reinstall_current_os" }'
@@ -40,7 +40,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
 ### Ví dụ — Cài lại OS khác
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/config' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -53,7 +53,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
 ### Ví dụ — Set root password (chỉ định)
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/config' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -66,7 +66,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
 ### Ví dụ — Reset root password (tự sinh)
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/config' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "id": 4567, "action": "reset_root_password" }'
@@ -75,7 +75,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
 ### Ví dụ — Change IP
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/config' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{

@@ -17,7 +17,7 @@ description: "Cập nhật user notes cho đơn hoặc cho từng VPS"
 | `user_notes` | string (≤ 2000) | không | Nội dung note. Bỏ trống = xoá. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/update-order-note' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/update-order-note' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "order_id": 5001, "user_notes": "Server cho khách Z" }'
@@ -51,7 +51,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/update-order-note' \
 | `notes` | string (≤ 2000) | không | Nội dung note. |
 
 ```bash
-curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/update-vps-note' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/customer/vps/update-vps-note' \
   -H 'Authorization: Bearer 1|...' \
   -H 'Content-Type: application/json' \
   -d '{ "id": 4567, "notes": "Production WordPress" }'

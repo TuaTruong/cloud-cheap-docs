@@ -28,13 +28,13 @@ Không cần body.
 <CodeGroup>
 
 ```bash cURL
-curl -X POST 'https://cloud-cheap.com/api/v2/refresh-api-token' \
+curl -X POST 'https://app.cloud-cheap.com/api/v2/refresh-api-token' \
   -H 'Authorization: Bearer 1|old-token...' \
   -H 'Accept: application/json'
 ```
 
 ```php PHP
-$ch = curl_init('https://cloud-cheap.com/api/v2/refresh-api-token');
+$ch = curl_init('https://app.cloud-cheap.com/api/v2/refresh-api-token');
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
