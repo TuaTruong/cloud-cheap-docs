@@ -46,7 +46,8 @@
       "group": "Khái niệm cốt lõi",
       "pages": [
         { "title": "Product families", "href": "/concepts/product-families", "icon": "tags" },
-        { "title": "Capability flags", "href": "/concepts/capabilities", "icon": "toggle-on" }
+        { "title": "Capability flags", "href": "/concepts/capabilities", "icon": "toggle-on" },
+        { "title": "Pricing & Costs", "href": "/concepts/pricing", "icon": "money-bill" }
       ]
     },
     {

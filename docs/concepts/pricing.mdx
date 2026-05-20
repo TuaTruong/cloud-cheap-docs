@@ -1,0 +1,185 @@
+---
+title: "Pricing & Costs"
+description: "Action nào miễn phí, action nào trừ balance — bảng tổng kết + cách đọc cost trước khi gọi"
+---
+
+Hệ thống phân biệt rõ **action miễn phí** và **action tính phí**. Trước
+khi gọi action có thể tính phí, **luôn đọc `capabilities.<action>.cost`**
+ở runtime để biết phí trước. Tránh hiển thị sai cho user / charge bất ngờ.
+
+## Tổng kết action
+
+### ✅ Miễn phí (mọi family)
+
+| Action | Endpoint |
+|---|---|
+| Xem danh sách / chi tiết | `/customer/proxy/list`, `/customer/vps/list`, `/customer/proxy/orders`, `/customer/vps/orders` |
+| Đồng bộ trạng thái | `/customer/proxy/refresh-*`, `/customer/vps/refresh-*` |
+| Cập nhật ghi chú | `/customer/proxy/update-*-note`, `/customer/vps/update-*-note` |
+| Chuyển quyền sở hữu | `/customer/proxy/transfer-*`, `/customer/vps/transfer-*` |
+| Huỷ đơn / VPS | `/customer/proxy/cancel-order`, `/customer/vps/cancel-order` |
+| Ẩn VPS | `/customer/vps/hide` |
+| Power control | `/customer/vps/power-control` |
+| Đổi auth | `/customer/proxy/change-proxy-auth` |
+| Đổi rotate time | `/customer/proxy/change-proxy-rotate-time` |
+| Lấy console / network / credentials | `/customer/vps/console`, `/network`, `/credentials` |
+| Đổi password VPS | `/customer/vps/change-password` |
+| Config VPS (reinstall, reset password, change IP) | `/customer/vps/config` |
+| Bandwidth config / generate | `/customer/proxy/bandwidth-*` |
+| Catalog / Account / Histories | mọi endpoint catalog + account + histories |
+
+### 💰 Tính phí (đọc cost runtime)
+
+| Action | Endpoint | Khi tính phí | Cách check trước |
+|---|---|---|---|
+| Mua proxy / VPS | `/customer/proxy/pay`, `/customer/vps/pay` | Luôn | Catalog response trả `price` per plan |
+| Gia hạn | `/customer/proxy/renew-proxy`, `/customer/vps/renew-vps` | Luôn | `capabilities.renew` |
+| Đổi IP proxy | `/customer/proxy/change-proxy-ip` | Tuỳ family + runtime | `capabilities.change_ip.cost` ≥ 0 |
+| Nâng cấp VPS (CPU/RAM/Disk/IP) | `/customer/vps/upgrade` | Luôn | Catalog options trả price components |
+| Nâng tốc độ mạng VPS | `/customer/vps/upgrade-bandwidth` | Luôn | Tính theo speed mới × diff |
+
+## Đọc cost trước khi gọi
+
+### Pattern 1: Capability có `cost` field
+
+Một số capability có sẵn `cost` value:
+
+```json
+"change_ip": {
+  "can": true,
+  "cost": 20000,
+  "reason": null
+}
+```
+
+- `cost = 0` → action miễn phí
+- `cost > 0` → action mất `<cost>` VND, trừ ngay từ `balance` khi gọi thành công
+
+UI nên hiện cost cho user xác nhận trước:
+
+```jsx
+<Button onClick={changeIp}>
+  Đổi IP
+  {proxy.capabilities.change_ip.cost > 0 && (
+    <Badge>{formatCurrency(proxy.capabilities.change_ip.cost)}</Badge>
+  )}
+</Button>
+```
+
+### Pattern 2: Tính giá phía client từ catalog
+
+Cho action mua / upgrade, giá phụ thuộc nhiều biến (period, quantity,
+addon...). Lấy từ catalog plan:
+
+```js
+// Mua proxy
+const total = plan.price * quantity * days / plan.price_duration;
+
+// Upgrade VPS — đọc client_features
+if (plan.client_features.fixed_addon_pricing) {
+  // Giá fixed theo bảng
+  total = plan.client_features.fixed_addon_prices.cpu * cpu_plus
+        + plan.client_features.fixed_addon_prices.ram * ram_plus
+        + plan.client_features.fixed_addon_prices.disk * disk_plus;
+} else {
+  // Per-unit — tính qua catalog options
+  // (xem /catalog/fetch-product-options)
+}
+```
+
+### Pattern 3: Response trả `amount_charged`
+
+Action paid thành công luôn trả về **2 field** trong response data:
+
+```json
+{
+  "success": true,
+  "data": {
+    "amount_charged": 70000,     // ← số tiền đã trừ
+    "balance_after": 290000,     // ← số dư còn lại
+    // ... other fields
+  }
+}
+```
+
+Phía client nên hiện toast confirm: "Đã trừ {amount_charged}, số dư còn {balance_after}".
+
+## Khi balance không đủ
+
+Mọi action paid kiểm tra balance **trước** khi thực hiện. Nếu không đủ:
+
+```json
+{
+  "success": false,
+  "message": "Số dư không đủ",
+  "code": "internal_error",
+  "errors": {},
+  "meta": {}
+}
+```
+
+HTTP status **`503`** (service unavailable due to balance).
+
+<Warning>
+Một số action paid có `cost` thay đổi theo runtime (vd `change_ip.cost`
+khác nhau giữa free và paid IP). Luôn **đọc capability runtime trước
+mỗi lần thao tác**, không cache cost giá trị.
+</Warning>
+
+## Flow giao dịch nội bộ
+
+Khi action paid thành công:
+
+1. Hệ thống **kiểm tra balance** ≥ cost. Nếu thiếu → trả 503, không thực hiện action.
+2. **Trừ balance** ngay lập tức (atomic transaction).
+3. Ghi **transaction log** (xem [`/customer/histories/payments`](/histories/payments)).
+4. Thực hiện action.
+5. Nếu action fail (vd timeout) → **rollback balance** + ghi log.
+6. Response trả `amount_charged` + `balance_after`.
+
+## Audit history
+
+Mọi giao dịch trừ tiền hiển thị trong [`/customer/histories/payments`](/histories/payments):
+
+```json
+{
+  "type": "purchase",
+  "amount": -20000,
+  "balance_before": 320000,
+  "balance_after": 300000,
+  "note": "Đổi IP proxy 203.0.113.45",
+  "related_type": "proxy",
+  "related_order_id": 5678
+}
+```
+
+Reseller portal có thể tận dụng endpoint này để hiển thị invoice / billing
+summary cho khách hàng cuối.
+
+## Best practice
+
+<Info>
+**Trước mỗi action paid**:
+1. Hiển thị **cost trước** cho user xác nhận.
+2. Gọi API.
+3. Đọc `amount_charged` + `balance_after` từ response.
+4. Cập nhật UI balance + hiển thị toast confirm.
+</Info>
+
+<Warning>
+**Không bao giờ** hardcode cost trong client. Đọc từ
+`capabilities.<action>.cost` hoặc từ catalog options runtime — giá có thể
+đổi theo policy, family, hoặc runtime state.
+</Warning>
+
+<Warning>
+**Tránh retry mù** action paid khi gặp 503 — có thể là balance không đủ.
+Hiển thị thông báo cho user nạp thêm balance trước, không tự động retry.
+</Warning>
+
+## Liên quan
+
+- [Capability flags](/concepts/capabilities) — schema `cost` trong capability
+- [Profile](/account/profile) — lấy balance hiện tại
+- [Histories — Payments](/histories/payments) — audit giao dịch
+- [Error model](/error-model) — code `internal_error` cho balance insufficient
