@@ -40,7 +40,6 @@
         { "title": "Quickstart", "href": "/quickstart", "icon": "rocket" },
         { "title": "Authentication", "href": "/authentication", "icon": "key" },
         { "title": "Error model", "href": "/error-model", "icon": "triangle-exclamation" },
-        { "title": "Migration v1 → v2", "href": "/migration-v1-to-v2", "icon": "arrow-right-arrow-left" }
       ]
     },
     {
