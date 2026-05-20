@@ -36,7 +36,7 @@
     {
       "group": "Bắt đầu",
       "pages": [
-        { "title": "Giới thiệu", "href": "/introduction", "icon": "house" },
+        { "title": "Giới thiệu", "href": "/", "icon": "house" },
         { "title": "Quickstart", "href": "/quickstart", "icon": "rocket" },
         { "title": "Authentication", "href": "/authentication", "icon": "key" },
         { "title": "Error model", "href": "/error-model", "icon": "triangle-exclamation" },
