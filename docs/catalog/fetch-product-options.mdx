@@ -1,13 +1,16 @@
 ---
 title: "Lấy options chi tiết một plan"
-description: "Cấu hình khả dụng (region, OS, protocol, price components) cho một plan cụ thể"
+description: "Cấu hình & bảng giá đa chiều cho một plan cụ thể (chu kỳ, IP rotation, OS, addon...)"
 ---
 
 `GET /api/v2/fetch-product-options`
 
-Khi customer chọn một plan trong catalog, bạn gọi endpoint này để lấy
-các tuỳ chọn động (region, OS, protocol, price components, …). Dữ liệu
-trả về dùng để render form mua hàng phía UI.
+Khi khách chọn một plan trong catalog, gọi endpoint này để lấy:
+
+- Tập hợp **tuỳ chọn** khả dụng (period, location, protocol, rotate_time, OS, ...).
+- **Bảng giá đa chiều** (`price_matrix`) — vì plan có thể có nhiều trục giá độc lập, ví dụ một plan IP xoay có giá phụ thuộc cả **chu kỳ** lẫn **tần suất xoay IP**.
+
+Frontend dùng dữ liệu này để render form mua hàng và **tra giá trực tiếp** từ matrix, KHÔNG tự nhân `base_per_day × days`.
 
 **Áp dụng cho**: Mọi group (Proxy + VPS)
 **Auth**: Không bắt buộc
@@ -20,26 +23,35 @@ trả về dùng để render form mua hàng phía UI.
 | Tham số | Kiểu | Bắt buộc | Mô tả |
 |---|---|---|---|
 | `plan_id` | integer | có | ID plan lấy từ `fetch-proxy-products` / `fetch-vps-products`. |
-| `vps_id` | integer | không | Chỉ áp dụng khi gọi cho VPS đã tồn tại (vd lấy options upgrade). |
+| `vps_id` | integer | không | Chỉ áp dụng khi gọi cho VPS đã tồn tại (vd lấy options upgrade — server sẽ trả options của plan tương ứng VPS hiện tại). |
 
 ### Ví dụ
 
 ```bash
-curl 'https://app.cloud-cheap.com/api/v2/fetch-product-options?plan_id=12' \
+curl 'https://app.cloud-cheap.com/api/v2/fetch-product-options?plan_id=17' \
   -H 'Accept: application/json'
 ```
 
 ## Response thành công
 
-### Schema chung
+`data` là một object có shape khác nhau giữa Proxy và VPS, nhưng cùng pattern:
 
-Cấu trúc `data` phụ thuộc loại plan. Hai khối lớn:
+- Một số **map options** keyed bởi `code → label` (vd `location`, `protocol`, `period`, `rotate_time`)
+- `auto_renew_enabled` (bool) — plan có hỗ trợ auto-renew?
+- `price_matrix` (object) — bảng giá đa chiều (xem [Cấu trúc `price_matrix`](#cấu-trúc-price_matrix))
 
-**Cho Proxy plan**: `data` chứa `regions`, `protocols`, `days`, `auth_types`, `price_components`, …
+### Schema Proxy plan
 
-**Cho VPS plan**: `data` chứa `os`, `regions` (hoặc `locations`), `cpu_options`, `ram_options`, `disk_options`, `bandwidth_options`, `price_components`, …
+| Field | Type | Mô tả |
+|---|---|---|
+| `period` | object<string, int> | Map các chu kỳ cho phép (key = số ngày dạng string, value = số ngày). VD `{"1":1,"7":7,"15":15,"30":30}`. Plan có thể có 1 hay nhiều giá trị; KHÔNG phải range. Một số plan tĩnh không có field này (giá theo `price_unit` cố định). |
+| `location` | object<string, string> | Map mã quốc gia/khu vực → tên hiển thị. VD `{"US":"United States"}`. |
+| `protocol` | object<string, string> | Map mã protocol → tên hiển thị. VD `{"HTTP":"HTTP","SOCKS5":"SOCKS5"}`. |
+| `rotate_time` | object<string, string> | **Chỉ cho gói rotating proxy.** Map giây → label, VD `{"60":"1 minute","120":"2 minutes","240":"4 minutes"}`. Tần suất xoay càng nhanh thường càng đắt. |
+| `auto_renew_enabled` | bool | Plan có cho phép bật auto-renew không. |
+| `price_matrix` | object | Bảng giá đa chiều — xem mục dưới. Nếu thiếu (plan giá cố định, ví dụ bandwidth gb-based) thì dùng `price` trong catalog. |
 
-### Ví dụ — Proxy plan
+### Ví dụ thật — Proxy plan IP xoay (plan_id = 17)
 
 ```json
 {
@@ -47,28 +59,53 @@ Cấu trúc `data` phụ thuộc loại plan. Hai khối lớn:
   "message": "Success",
   "code": "ok",
   "data": {
-    "regions": ["US", "VN", "SG", "DE"],
-    "protocols": { "http": "HTTP", "socks5": "SOCKS5" },
-    "days": { "min": 7, "max": 365, "step": 1 },
-    "auth_types": ["user_pass"],
-    "price_components": {
-      "base_per_day": 50000,
-      "discount_tiers": [
-        { "min_days": 30, "discount_percent": 5 },
-        { "min_days": 90, "discount_percent": 15 }
-      ]
+    "period":      { "1": 1, "7": 7, "15": 15, "30": 30 },
+    "location":    { "US": "United States" },
+    "protocol":    { "HTTP": "HTTP" },
+    "rotate_time": { "60": "1 minute", "120": "2 minutes", "240": "4 minutes" },
+    "auto_renew_enabled": true,
+    "price_matrix": {
+      "axes": ["rotate_time", "period"],
+      "tree": {
+        "rotate_time": {
+          "60":  { "period": { "1": {"price": 4000}, "7": {"price": 22000}, "15": {"price": 40000}, "30": {"price": 68000} } },
+          "120": { "period": { "1": {"price": 3000}, "7": {"price": 17000}, "15": {"price": 30000}, "30": {"price": 51000} } },
+          "240": { "period": { "1": {"price": 2500}, "7": {"price": 11000}, "15": {"price": 20000}, "30": {"price": 35000} } }
+        }
+      }
     }
   },
   "meta": {}
 }
 ```
 
-### Ví dụ — VPS plan
+Diễn giải bảng giá plan 17:
+
+| `rotate_time` | `period=1` | `period=7` | `period=15` | `period=30` |
+|---|---|---|---|---|
+| 60s (1 phút)  | 4 000 ₫ | 22 000 ₫ | 40 000 ₫ | 68 000 ₫ |
+| 120s (2 phút) | 3 000 ₫ | 17 000 ₫ | 30 000 ₫ | 51 000 ₫ |
+| 240s (4 phút) | 2 500 ₫ | 11 000 ₫ | 20 000 ₫ | 35 000 ₫ |
+
+→ Xoay càng nhanh → đắt hơn. Mua càng lâu → giảm giá theo bậc (mua 30 ngày tại 60s = 68k thay vì 4k × 30 = 120k, tiết kiệm 43%).
+
+### Schema VPS plan
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `os` | array<object> | Danh sách OS khả dụng: `{id, name}`. |
+| `locations` (hoặc `regions`) | array<object> hoặc map | Datacenter khả dụng. |
+| `cpu_options` / `ram_options` / `bandwidth_options` | array<int> | Các bậc cấu hình base có sẵn. |
+| `disk_options` | object | `{min, max, step}` hoặc array — disk addon phải là bội số `step` (đọc `client_features.disk_step` trong catalog). |
+| `main_prices` | object | Giá base theo chu kỳ (monthly / quarterly / yearly), VD `{"monthly":{"price":140000},"yearly":{"price":1400000}}`. |
+| `auto_renew_enabled` | bool | Như proxy. |
+| `price_matrix` | object | Bảng giá addon đa chiều — xem mục dưới. Một số plan dùng `fixed_addon_pricing` (đọc từ catalog → `client_features.fixed_addon_pricing` + `fixed_addon_prices`) thay vì `price_matrix`. |
+
+### Ví dụ — VPS plan (rút gọn)
 
 ```json
 {
   "success": true,
-  "message": "Success",
   "code": "ok",
   "data": {
     "os": [
@@ -83,43 +120,99 @@ Cấu trúc `data` phụ thuộc loại plan. Hai khối lớn:
     "ram_options": [2, 4, 8, 16, 32],
     "disk_options": { "min": 30, "max": 240, "step": 10 },
     "bandwidth_options": [1000, 5000, 10000],
-    "price_components": {
-      "base": 100000,
-      "addon_cpu_per_core": 20000,
-      "addon_ram_per_gb": 15000,
-      "addon_disk_per_gb": 1000
+    "main_prices": {
+      "monthly":   { "price": 140000 },
+      "quarterly": { "price": 399000 },
+      "yearly":    { "price": 1400000 }
+    },
+    "auto_renew_enabled": true,
+    "price_matrix": {
+      "axes": ["period", "cpu_addon"],
+      "tree": {
+        "period": {
+          "monthly":   { "cpu_addon": { "0": {"price": 0}, "2": {"price": 40000}, "4": {"price": 80000} } },
+          "yearly":    { "cpu_addon": { "0": {"price": 0}, "2": {"price": 400000}, "4": {"price": 800000} } }
+        }
+      }
     }
   },
   "meta": {}
 }
 ```
 
+## Cấu trúc `price_matrix`
+
+`price_matrix` là bảng giá **đa chiều** đã chuẩn hoá, gồm hai field:
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `axes` | array<string> | Tên các trục, đúng thứ tự lồng nhau trong `tree`. VD `["rotate_time","period"]` ⇒ tree lồng `tree.rotate_time.<v>.period.<v>.price`. |
+| `tree` | object | Cây lồng nhau. Mỗi node lá là `{"price": int_vnd}`. Số tầng = `len(axes)`. |
+
+### Lookup giá ở client (JS)
+
+```js
+// options = data from this endpoint
+function lookupPrice(matrix, selections) {
+  let node = matrix.tree;
+  for (const axis of matrix.axes) {
+    const value = String(selections[axis]);
+    node = node?.[axis]?.[value];
+    if (!node) return null;
+  }
+  return node.price ?? null;
+}
+
+// Plan 17 — khách chọn rotate=60s, period=30 ngày:
+const price = lookupPrice(options.price_matrix, { rotate_time: 60, period: 30 });
+// → 68000
+```
+
+### Lookup giá ở client (PHP)
+
+```php
+function lookupPrice(array $matrix, array $selections): ?int {
+    $node = $matrix['tree'];
+    foreach ($matrix['axes'] as $axis) {
+        $value = (string) ($selections[$axis] ?? '');
+        $node = $node[$axis][$value] ?? null;
+        if (!is_array($node)) return null;
+    }
+    return $node['price'] ?? null;
+}
+```
+
+### Tại sao không phải `days{min,max,step}`?
+
+Trong phiên bản docs đầu tiên (đã loại bỏ) `fetch-product-options` mô tả chu kỳ proxy là một range `days{min, max, step}` + `discount_tiers`. Thực tế:
+
+- Chu kỳ là **discrete** (1/7/15/30 ngày) — không phải mọi giá trị step đều mua được.
+- Giá **không tuyến tính** theo ngày — discount tier không đủ để mô tả vì giá còn phụ thuộc trục khác (rotate_time).
+
+→ `price_matrix` là cấu trúc tổng quát thay thế, hoạt động đúng cho cả plan đơn trục (chỉ `period`) và đa trục (rotate × period, hoặc period × cpu_addon, ...).
+
 ## Errors
 
 | HTTP | `code` | Khi nào |
 |---|---|---|
 | 422 | `validation_failed` | Thiếu `plan_id` hoặc `plan_id` không tồn tại / inactive. |
-| 200 | `ok` | Plan có nhưng không có option động — `data: []`. UI dùng giá `price` từ catalog. |
+| 200 | `ok` (data: []) | Plan có nhưng không có option động (giá cố định) — UI dùng `price` từ catalog × `quantity`. |
 | 500 | `internal_error` | Lỗi server. |
 
 ### Ví dụ — plan không có option động
 
 ```json
-{
-  "success": true,
-  "message": "Empty",
-  "code": "ok",
-  "data": [],
-  "meta": {}
-}
+{ "success": true, "message": "Empty", "code": "ok", "data": [], "meta": {} }
 ```
 
 ## Business notes
 
-- Một số plan **không có** option động (giá cố định, không config) → trả `data: []`.
-- Cấu trúc field trong `data` khác giữa Proxy và VPS — frontend cần check `type` từ catalog trước khi parse.
-- Frontend **không nên** cache response này lâu (giá có thể thay đổi runtime theo tỉ giá / khuyến mãi).
-- Truyền `vps_id` chỉ khi customer đang chọn upgrade cho VPS đã có.
+- Frontend **luôn** đọc `price_matrix` để tính giá khi plan có matrix — không tự nhân `base × period`.
+- Plan IP xoay (`rotate_time` xuất hiện) sẽ luôn có axis `rotate_time` trong `price_matrix`. Plan tĩnh thì không có axis này, chỉ có `period`.
+- Plan **bandwidth** (gb-based, `is_bandwidth_plan: true` trong catalog) không có `period` lẫn `rotate_time` — giá tính `bandwidth_gb × price` từ catalog. Không có `price_matrix`.
+- VPS plan dùng `fixed_addon_pricing = true` (xem `client_features` trong catalog) thì giá addon được lookup từ `client_features.fixed_addon_prices` (cố định mỗi đơn vị) thay vì `price_matrix`. Plan thường thì lookup từ `price_matrix`.
+- Frontend **không nên** cache response này lâu (giá có thể thay đổi runtime theo tỉ giá / khuyến mãi). Khuyến nghị 1–5 phút.
+- Truyền `vps_id` chỉ khi customer đang chọn upgrade cho VPS đã có (server có thể trả options khác — ví dụ disk addon đã bao gồm dung lượng hiện tại).
 
 ## Liên quan
 
