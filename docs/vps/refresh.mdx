@@ -1,6 +1,6 @@
 ---
 title: "Đồng bộ trạng thái VPS"
-description: "3 endpoint refresh khác nhau cho VPS — sync state với provider"
+description: "3 endpoint refresh khác nhau cho VPS — sync state, đồng bộ hệ thống"
 ---
 
 Tương tự [`/proxy/refresh`](/proxy/refresh), VPS cũng có 3 endpoint refresh:
@@ -71,7 +71,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-of-order' 
 
 ## Business notes
 
-- Refresh là **realtime call** tới provider — chậm (1–10s).
+- Refresh là **realtime call** trong hệ thống — chậm (1–10s).
 - **Không gọi trong loop**. Đề xuất rate: 1 lần / 60s.
 - Dùng để check provisioning state sau mua VPS, hoặc khi UI hiển thị stale.
 - Polling [`/vps/list`](/vps/list) chu kỳ 60s nhẹ hơn — preferred cho UI auto-update.

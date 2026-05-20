@@ -18,9 +18,9 @@ Nếu bạn integrate mới từ đầu, bỏ qua trang này và đến thẳng
     Mọi endpoint trả `{ success, message, code, data, meta }`. Bạn chỉ
     cần 1 hàm parse.
   </Card>
-  <Card title="Field provider đã ẩn" icon="eye-slash">
+  <Card title="Internal fields đã ẩn" icon="eye-slash">
     `provider`, `provider_*`, `cost_price`, `profit`, `admin_*` không
-    còn xuất hiện. Phản ánh đúng yêu cầu private.
+    còn xuất hiện trong response — contract gọn, không có field nội bộ.
   </Card>
   <Card title="Family + capability mới" icon="diagram-project">
     Mỗi sản phẩm có `family`, `family_code`, `capabilities` để UI
@@ -137,12 +137,12 @@ Một số field **mới** xuất hiện trong v2:
 
 ## 4. Capability flag — thay vì hardcode
 
-**v1 (hardcode logic UI)** — phải biết tên backend:
+**v1 (hardcode logic UI)** — phải biết tên field cụ thể:
 
 ```js
 function showConsoleButton(vps) {
-  // v1 yêu cầu hard-code: chỉ một backend cụ thể được mở console
-  return vps.provider === '<INTERNAL_BACKEND_NAME>' && vps.main_ipv4 !== '';
+  // v1 yêu cầu hard-code field nội bộ
+  return vps.provider === '<INTERNAL_VALUE>' && vps.main_ipv4 !== '';
 }
 ```
 
@@ -154,8 +154,8 @@ function showConsoleButton(vps) {
 }
 ```
 
-Lợi: nếu policy backend đổi (vd thêm provider hỗ trợ console), UI tự cập
-nhật mà không cần đổi code phía bạn.
+Lợi: nếu chính sách thay đổi (vd dòng sản phẩm mới có console), UI tự
+cập nhật mà không cần đổi code phía bạn.
 
 Xem [Capabilities](/concepts/capabilities) cho schema đầy đủ.
 
@@ -195,8 +195,8 @@ $res = $http->get('/api/customer/proxy/list?per_page=20');
 $body = json_decode($res->getBody(), true);
 $proxies = $body['proxies']; // top-level "proxies"
 foreach ($proxies as $p) {
-    // UI hardcode theo provider (BAD — v1 pattern)
-    $canChangeIp = $p['provider'] !== '<INTERNAL_BACKEND_NAME>' || /* condition */;
+    // BAD — v1 hardcode field nội bộ
+    $canChangeIp = $p['provider'] !== '<INTERNAL_VALUE>' || /* condition */;
 }
 ```
 
@@ -256,11 +256,10 @@ Lưu ý: query param `size` → `per_page` (đổi tên).
     Viết helper `parseV2Response($body)` — trả `data` hoặc throw exception
     dựa trên `success`. Dùng cho mọi endpoint.
   </Step>
-  <Step title="Xoá hardcode provider name">
-    Search trong codebase mọi string khớp `provider == '<value>'` hoặc
-    so sánh `provider_*_id`. Mọi nơi dùng cho UI logic → chuyển sang
-    `capabilities.*`. (Danh sách giá trị `provider` cũ bạn từng nhận từ
-    v1: tự tham chiếu log/response cũ của mình.)
+  <Step title="Xoá hardcode field nội bộ">
+    Search trong codebase mọi nơi compare giá trị của field `provider`
+    hoặc `provider_*_id`. Mọi nơi dùng cho UI logic → chuyển sang
+    `capabilities.*` (đọc runtime, không hardcode).
   </Step>
   <Step title="Update pagination">
     Đổi `current_page` → `meta.pagination.page`, v.v.
@@ -322,4 +321,4 @@ Mốc cụ thể sẽ được công bố qua email + Telegram. Theo dõi
 - [Quickstart](/quickstart) — tích hợp v2 từ đầu.
 - [Error model](/error-model) — envelope spec đầy đủ.
 - [Product families](/concepts/product-families) — phân loại sản phẩm v2.
-- [Capabilities](/concepts/capabilities) — flag dùng thay cho hardcode provider.
+- [Capabilities](/concepts/capabilities) — flag dùng thay cho hardcode field nội bộ.

@@ -130,7 +130,7 @@ Endpoint không có lỗi business — trường hợp xấu nhất là `data: [
 ## Business notes
 
 - Chỉ trả về sản phẩm `status = 'active'`.
-- Plan từ provider đã shutdown / loại trừ **không xuất hiện**.
+- Plan đã ngừng bán / loại khỏi danh mục **không xuất hiện**.
 - `capabilities` ở đây là **default theo family** — record proxy thực
   tế (`customer/proxy/list`) có thể có capability khác do runtime override.
 - Frontend nên cache response này 5–15 phút.

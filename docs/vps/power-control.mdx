@@ -79,7 +79,7 @@ Sau khi action xong, gọi [`/vps/list`](/vps/list) để xem state mới.
 ## Business notes
 
 - Action **chỉ chạy được** nếu nằm trong `actions[]` của VPS (xem [`/vps/list`](/vps/list)). UI nên check trước khi gửi request.
-- Action thực tế là **async** — request trả về ngay, provider xử lý sau. Đợi 5–30s rồi gọi [`/vps/list`](/vps/list) để xem state cuối.
+- Action thực tế là **async** — request trả về ngay, hệ thống xử lý sau. Đợi 5–30s rồi gọi [`/vps/list`](/vps/list) để xem state cuối.
 - `power_off` (force) có nguy cơ mất data đang ghi. Khuyến nghị `shutdown` (graceful).
 - Hành động ghi vào activity log.
 

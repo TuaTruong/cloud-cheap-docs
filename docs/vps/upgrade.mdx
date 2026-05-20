@@ -89,7 +89,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
 ## Business notes
 
 - Giá addon = `addon_per_unit × quantity` (cho family per-unit pricing) hoặc lookup table (cho family `fixed_pricing`).
-- Upgrade **không reboot** VPS (đa số trường hợp). Một số provider yêu cầu reboot — `action_status` sẽ là `upgrading_rebooting`.
+- Upgrade **không reboot** VPS (đa số trường hợp). Một số hệ thống yêu cầu reboot — `action_status` sẽ là `upgrading_rebooting`.
 - Không thể **downgrade** qua endpoint này. Liên hệ support nếu cần.
 - Disk thêm chỉ allocate, **không expand filesystem** tự động — bạn cần resize2fs / partprobe phía VPS.
 

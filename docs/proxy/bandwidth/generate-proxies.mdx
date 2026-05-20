@@ -39,7 +39,7 @@ proxy mới cho khách hàng cuối hoặc làm rotation thủ công.
 | `country_code` | string (ISO-2) | không | Lọc theo quốc gia, vd `"US"`, `"VN"`. |
 | `state_code` | string | không | Lọc theo tỉnh/bang. |
 | `city_code` | string | không | Lọc theo thành phố. |
-| `asn_code` | string | không | Lọc theo ASN provider (vd `"7922"`). |
+| `asn_code` | string | không | Lọc theo ASN (vd `"7922"`). |
 | `proxy_type` | enum `rotating` \| `sticky` | không | Mặc định `rotating`. |
 | `session` | string (1–64 chars) | không | Session ID khi `proxy_type=sticky`. Tự sinh nếu trống. |
 | `proxy_sticky_times` | integer (1–120) | có nếu `proxy_type=sticky` | Số **phút** giữ IP trước khi đổi. |

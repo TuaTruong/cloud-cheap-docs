@@ -36,7 +36,7 @@ hỗ trợ cả mua theo **period** (ngày/tháng) và **bandwidth GB**.
 | `proxies[]` | array | không | Khi mua proxy đã chọn sẵn (mỗi phần tử có `id`, `ip_public`, `protocol`, `location`). |
 
 <Warning>
-Field `ips[]` chỉ áp dụng cho một số provider nội bộ (đã loại trừ).
+Field `ips[]` chỉ áp dụng cho một số loại sản phẩm cụ thể (đã loại trừ).
 Reseller dùng v2 **không cần** truyền field này. Nếu truyền, server trả 422.
 </Warning>
 
@@ -90,7 +90,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/pay' \
 
 <Info>
 Sau khi `pay` thành công, đơn có thể ở trạng thái `processing` cho đến
-khi provider phía sau cấp xong proxy. Gọi [`refresh-order`](/proxy/refresh)
+khi hệ thống cấp xong proxy. Gọi [`refresh-order`](/proxy/refresh)
 hoặc poll [`/proxy/list?order_id=...`](/proxy/list) để biết kết quả.
 </Info>
 

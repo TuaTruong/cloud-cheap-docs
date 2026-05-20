@@ -1,6 +1,6 @@
 ---
 title: "Đồng bộ trạng thái (refresh)"
-description: "Đồng bộ data đơn / proxy với provider phía sau — dùng khi UI hiển thị stale"
+description: "Đồng bộ data đơn / proxy với hệ thống — dùng khi UI hiển thị stale"
 ---
 
 Có **3 endpoint refresh** khác nhau cho proxy, dùng tuỳ scope:
@@ -9,7 +9,7 @@ Có **3 endpoint refresh** khác nhau cho proxy, dùng tuỳ scope:
 
 `POST /api/v2/customer/proxy/refresh-order`
 
-Đồng bộ trạng thái đơn (bao gồm provider response) với provider phía sau.
+Đồng bộ trạng thái đơn (bao gồm response đồng bộ) với hệ thống.
 Dùng khi đơn mới mua ở trạng thái `processing` để check đã ready chưa,
 hoặc khi nghi ngờ data đơn stale.
 
@@ -57,7 +57,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order' \
 `POST /api/v2/customer/proxy/refresh-order-proxies`
 
 Đồng bộ **danh sách proxy** trong một đơn — dùng khi đơn đã active nhưng
-một số proxy bị missing data (vd `public_ip` rỗng do provider chậm cập nhật).
+một số proxy bị missing data (vd `public_ip` rỗng do hệ thống chậm cập nhật).
 
 ### Request
 
@@ -93,7 +93,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order-proxie
 
 `POST /api/v2/customer/proxy/refresh-proxy`
 
-Đồng bộ **một proxy cụ thể** với provider. Dùng cho trường hợp đặc biệt
+Đồng bộ **một proxy cụ thể** với hệ thống. Dùng cho trường hợp đặc biệt
 khi nghi ngờ data của 1 proxy đang stale.
 
 ### Request
@@ -136,7 +136,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-proxy' \
 
 ## Business notes
 
-- Refresh là call **realtime** đến provider — chậm hơn các endpoint khác (1–3s).
+- Refresh là call **realtime** đến hệ thống — chậm hơn các endpoint khác (1–3s).
 - **Không** gọi refresh trong loop. Đề xuất rate giới hạn phía client: 1 lần / 30s cho cùng resource.
 - Trường hợp UI cần auto-update, dùng polling [`/proxy/list`](/proxy/list) với chu kỳ 60s.
 

@@ -8,16 +8,14 @@ description: "Sản phẩm được phân loại theo tính năng — danh sách
 **Family** là cách hệ thống phân loại sản phẩm thành các **nhóm có cùng
 tính năng và surface action**. Mỗi sản phẩm thuộc đúng một family.
 
-Ví dụ: hai gói proxy khác nhau (khác giá, khác region, khác nhà cung
-cấp phía sau) nếu có cùng đặc tính (vd "IPv4 datacenter, IP cố định")
-sẽ thuộc cùng family — UI và logic phía bạn xử lý chúng **giống hệt
-nhau**.
+Ví dụ: hai gói proxy khác nhau (khác giá, khác region) nếu có cùng
+đặc tính (vd "IPv4 datacenter, IP cố định") sẽ thuộc cùng family — UI
+và logic phía bạn xử lý chúng **giống hệt nhau**.
 
 <Info>
-Family là **contract về tính năng**, không liên quan đến backend. Hệ
-thống có thể thêm/bớt family, thêm/bớt nhà cung cấp phía sau mà
-không thông báo trước — client phải đọc danh sách family active từ
-**response runtime**, không hardcode.
+Family là **contract về tính năng**. Hệ thống có thể thêm hoặc loại bỏ
+family trong tương lai mà không thông báo trước — client phải đọc danh
+sách family active từ **response runtime**, không hardcode.
 </Info>
 
 ## Cách dùng family
@@ -107,15 +105,15 @@ còn `family_code` chỉ cho biết loại sản phẩm.
 ## Khi family tạm thời không có sản phẩm
 
 Đôi khi một family được hệ thống định nghĩa nhưng **không có SKU nào
-active** trong catalog (vd: đang chuyển nhà cung cấp, hoặc nhà cung cấp
-tạm dừng).
+active** trong catalog (vd: đang điều chỉnh danh mục, tạm dừng dòng
+sản phẩm).
 
 Khi đó:
 
 - `fetch-*-products` **không trả về group cho family** đó.
 - UI phía bạn nên **degrade gracefully** — không render tab rỗng, không
   hardcode list family expected.
-- Khi backend khôi phục, family group sẽ xuất hiện trở lại — client
+- Khi catalog khôi phục, family group sẽ xuất hiện trở lại — client
   không cần update.
 
 ```js
@@ -161,7 +159,7 @@ Client cần **3 nguyên tắc** khi tích hợp:
 
 <Warning>
 **Không parse `name` / `plan` / `external_*`** của sản phẩm để đoán
-backend. Hệ thống cố tình ẩn thông tin đó — backend có thể đổi mà không
+thông tin nội bộ. Hệ thống cố tình ẩn — catalog có thể đổi mà không
 báo trước.
 </Warning>
 
