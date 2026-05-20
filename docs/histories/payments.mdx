@@ -1,0 +1,133 @@
+---
+title: "Lịch sử thanh toán"
+description: "Danh sách giao dịch deposit, payment, refund của tài khoản"
+---
+
+`GET /api/v2/customer/histories/payments`
+
+Trả về danh sách các giao dịch tài chính của user (deposit, payment cho
+đơn hàng, refund, withdrawal, …). Hỗ trợ filter theo `keyword`, `date`,
+`type` và pagination.
+
+**Áp dụng cho**: User đã đăng nhập
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `page` | integer | không | Trang muốn xem. Mặc định `1`. |
+| `per_page` | integer (1–100) | không | Số bản ghi mỗi trang. Mặc định `20`. |
+| `keyword` | string | không | Tìm theo `order_number`, `plan`, `vps_ip` (case-insensitive). |
+| `date` | string `YYYY-MM-DD` | không | Lọc theo ngày tạo. |
+| `type` | string | không | Lọc theo loại giao dịch (vd `deposit`, `payment`, `refund_in`). |
+| `sort[]` | array | không | Cấu trúc Tabulator: `[{"field":"created_at","dir":"desc"}]`. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/histories/payments?per_page=10&page=2&type=deposit' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Accept: application/json'
+```
+
+## Response thành công
+
+### Schema
+
+`data` là array of payment records. Mỗi record:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Payment ID. |
+| `type` | string | Loại giao dịch (`deposit`, `payment`, `refund_in`, `refund_out`, `affiliate_withdrawal`, …). |
+| `amount` | number | Số tiền (VND), dương cho thu, âm cho chi. |
+| `currency` | string | Luôn `"VND"`. |
+| `balance_before` | number | Số dư trước giao dịch. |
+| `balance_after` | number | Số dư sau giao dịch. |
+| `status` | string | `"pending"`, `"success"`, `"reversed"`, `"failed"`. |
+| `gateway` | string \| null | Cổng thanh toán (vd `"bank"`, `"paypal"`). |
+| `gateway_tx_id` | string \| null | Mã giao dịch từ gateway. |
+| `note` | string | Mô tả đã localize (parse từ `note_key` + `note_params`). |
+| `related_type` | string \| null | Liên kết với gì: `"proxy_order"`, `"vps_order"`, `"proxy"`, `"vps"`, `"bank_transaction"`. |
+| `related_order_id` | integer \| null | ID record liên quan. |
+| `created_at` | ISO datetime | Thời điểm giao dịch. |
+
+`meta.pagination`:
+
+| Field | Mô tả |
+|---|---|
+| `page` | Trang hiện tại. |
+| `per_page` | Số bản ghi mỗi trang. |
+| `total` | Tổng số bản ghi. |
+| `last_page` | Số trang cuối. |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    {
+      "id": 4521,
+      "type": "deposit",
+      "amount": 200000,
+      "currency": "VND",
+      "balance_before": 300000,
+      "balance_after": 500000,
+      "status": "success",
+      "gateway": "bank",
+      "gateway_tx_id": "TX-20260518-12345",
+      "note": "Nạp tiền vào tài khoản từ bank transfer",
+      "related_type": "bank_transaction",
+      "related_order_id": 778,
+      "created_at": "2026-05-18T10:23:00Z"
+    },
+    {
+      "id": 4522,
+      "type": "payment",
+      "amount": -50000,
+      "currency": "VND",
+      "balance_before": 500000,
+      "balance_after": 450000,
+      "status": "success",
+      "note": "Thanh toán đơn proxy ORD-PROXY-001",
+      "related_type": "proxy_order",
+      "related_order_id": 1234,
+      "created_at": "2026-05-18T10:30:00Z"
+    }
+  ],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 10,
+      "total": 47,
+      "last_page": 5
+    }
+  }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token sai. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Chỉ trả về record của **chính user token**. Admin không impersonate qua endpoint này (dùng endpoint admin riêng).
+- `related_type` là **enum trung tính** — không lộ tên class nội bộ.
+- `note` đã được render với i18n (theo locale config Laravel). Nếu cần raw `note_key` + `note_params`, dùng v1 (sẽ deprecate sau).
+- Mặc định sort `created_at DESC, id DESC` nếu không chỉ định.
+
+## Liên quan
+
+- [Lịch sử hoạt động](/histories/activities)
+- [Profile](/account/profile)

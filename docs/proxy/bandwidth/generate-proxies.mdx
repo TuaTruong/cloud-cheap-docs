@@ -1,0 +1,246 @@
+---
+title: "Sinh danh sách proxy từ gói bandwidth"
+description: "Tạo proxy theo filter geo/sticky cho gói GB đã mua"
+---
+
+`POST /api/v2/customer/proxy/generate-bandwidth-proxies`
+
+Sinh ra một danh sách proxy mới từ pool theo cấu hình bạn yêu cầu (quốc gia,
+ASN, sticky/rotating, …) cho một gói **Proxy Bandwidth (GB)** đã mua. Mỗi
+lần gọi tạo ra một tập proxy độc lập — phù hợp khi reseller cần phát hành
+proxy mới cho khách hàng cuối hoặc làm rotation thủ công.
+
+**Áp dụng cho**: Proxy Bandwidth (GB) — `family_code: proxy_bandwidth`
+**Auth**: Bearer token (xem [Authentication](/authentication))
+**Rate limit**: Không có (mặc định)
+
+## Khi nào dùng
+
+- Bạn đã mua gói GB và muốn cấp một loạt proxy cho khách hàng cuối.
+- Sau khi đổi filter (vd đổi quốc gia mục tiêu), cần generate lại pool.
+- Tạo session sticky mới với `proxy_sticky_times` cho campaign cụ thể.
+
+## Request
+
+### Headers
+
+| Header | Bắt buộc | Giá trị mẫu |
+|---|---|---|
+| `Authorization` | có | `Bearer 1\|abc...` |
+| `Content-Type` | có | `application/json` |
+| `Accept` | nên có | `application/json` |
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID gói bandwidth của bạn (lấy từ `customer/proxy/list`). |
+| `order_number` | string | có | Mã đơn hàng chứa gói bandwidth. |
+| `country_code` | string (ISO-2) | không | Lọc theo quốc gia, vd `"US"`, `"VN"`. |
+| `state_code` | string | không | Lọc theo tỉnh/bang. |
+| `city_code` | string | không | Lọc theo thành phố. |
+| `asn_code` | string | không | Lọc theo ASN provider (vd `"7922"`). |
+| `proxy_type` | enum `rotating` \| `sticky` | không | Mặc định `rotating`. |
+| `session` | string (1–64 chars) | không | Session ID khi `proxy_type=sticky`. Tự sinh nếu trống. |
+| `proxy_sticky_times` | integer (1–120) | có nếu `proxy_type=sticky` | Số **phút** giữ IP trước khi đổi. |
+| `number_proxy` | integer (1–1000) | không | Số proxy muốn sinh. Mặc định `20`. |
+
+<Info>
+Filter (`country_code`, `asn_code`, …) phải lấy từ
+[`bandwidth-config-options`](/proxy/bandwidth/config-options) trước khi gọi
+endpoint này. Filter không hợp lệ sẽ trả về danh sách rỗng (không lỗi).
+</Info>
+
+### Ví dụ request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies' \
+  -H 'Authorization: Bearer 1|abcdef...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 1234,
+    "order_number": "ORD-PROXY-001",
+    "country_code": "US",
+    "proxy_type": "sticky",
+    "proxy_sticky_times": 10,
+    "number_proxy": 50
+  }'
+```
+
+```php PHP cURL
+<?php
+
+$payload = [
+    'proxy_id'           => 1234,
+    'order_number'       => 'ORD-PROXY-001',
+    'country_code'       => 'US',
+    'proxy_type'         => 'sticky',
+    'proxy_sticky_times' => 10,
+    'number_proxy'       => 50,
+];
+
+$ch = curl_init('https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => json_encode($payload),
+    CURLOPT_HTTPHEADER     => [
+        'Authorization: Bearer ' . $apiToken,
+        'Content-Type: application/json',
+        'Accept: application/json',
+    ],
+]);
+
+$body = curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+$response = json_decode($body, true);
+if (!$response['success']) {
+    throw new Exception($response['message']);
+}
+
+foreach ($response['data']['proxies'] as $proxy) {
+    echo $proxy['public_ip'] . ':' . $proxy['port'] . ':' . $proxy['username'] . ':' . $proxy['password'] . "\n";
+}
+```
+
+```javascript Node fetch
+const res = await fetch(
+  'https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      proxy_id: 1234,
+      order_number: 'ORD-PROXY-001',
+      country_code: 'US',
+      proxy_type: 'sticky',
+      proxy_sticky_times: 10,
+      number_proxy: 50,
+    }),
+  },
+);
+
+const body = await res.json();
+if (!body.success) {
+  throw new Error(body.message);
+}
+
+body.data.proxies.forEach((p) => {
+  console.log(`${p.public_ip}:${p.port}:${p.username}:${p.password}`);
+});
+```
+
+</CodeGroup>
+
+## Response thành công
+
+### Schema
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `data.proxies` | array | Danh sách proxy sinh ra. |
+| `data.proxies[].public_ip` | string | IP công khai cấp cho proxy. |
+| `data.proxies[].port` | integer | Cổng truy cập (thường 8080 hoặc 1080). |
+| `data.proxies[].username` | string | Username xác thực Basic Auth. |
+| `data.proxies[].password` | string | Mật khẩu xác thực. |
+| `data.proxies[].protocol` | string | `"http"` hoặc `"socks5"`. |
+| `data.proxies[].session` | string \| null | Session ID khi sticky, `null` khi rotating. |
+| `data.proxies[].sticky_until` | ISO datetime \| null | Thời điểm session hết hiệu lực (sticky). |
+| `data.summary.requested` | integer | Số proxy yêu cầu. |
+| `data.summary.generated` | integer | Số proxy thực tế tạo được. |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "proxies": [
+      {
+        "public_ip": "203.0.113.45",
+        "port": 8080,
+        "username": "u_AbC123",
+        "password": "p_XyZ789",
+        "protocol": "http",
+        "session": "sess_us_001",
+        "sticky_until": "2026-05-20T18:30:00Z"
+      },
+      {
+        "public_ip": "203.0.113.46",
+        "port": 8080,
+        "username": "u_AbC123",
+        "password": "p_XyZ789",
+        "protocol": "http",
+        "session": "sess_us_002",
+        "sticky_until": "2026-05-20T18:30:00Z"
+      }
+    ],
+    "summary": {
+      "requested": 50,
+      "generated": 50
+    }
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu `proxy_id`/`order_number`, hoặc `proxy_type=sticky` mà không có `proxy_sticky_times`. Chi tiết tại `errors`. |
+| 403 | `forbidden` | `order_number` không thuộc về user token đang dùng. |
+| 422 | `feature_unavailable` | Proxy không phải gói bandwidth (`capabilities.bandwidth_package.is_bandwidth = false`). |
+| 503 | `internal_error` | Provider phía sau từ chối hoặc timeout. Có thể retry sau 30s. |
+
+### Ví dụ — validation fail
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "code": "validation_failed",
+  "errors": {
+    "proxy_id": ["The proxy id field is required."],
+    "proxy_sticky_times": ["The proxy sticky times field is required when proxy type is sticky."]
+  },
+  "meta": {}
+}
+```
+
+### Ví dụ — không phải gói bandwidth
+
+```json
+{
+  "success": false,
+  "message": "Gói này không hỗ trợ tính năng bandwidth config",
+  "code": "feature_unavailable",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Mỗi lần gọi sinh **tối đa 1000 proxy** (`number_proxy`).
+- Proxy sinh ra **không trừ trực tiếp** vào quota GB — chỉ trừ khi proxy thực sự truyền dữ liệu.
+- Mỗi lần gọi **tạo session mới** — proxy cũ vẫn dùng được tới khi `sticky_until` hết hạn (đối với sticky).
+- Filter (`country_code`, `asn_code`, …) phải hợp lệ với pool. Lấy danh sách hợp lệ từ [`bandwidth-config-options`](/proxy/bandwidth/config-options) trước.
+- Khi `proxy_type=rotating`, mỗi request từ proxy sẽ có IP khác. `proxy_sticky_times` bị bỏ qua.
+
+## Liên quan
+
+- [Lấy options cấu hình bandwidth](/proxy/bandwidth/config-options) — biết quốc gia/ASN nào có sẵn.
+- [Cập nhật cấu hình mặc định](/proxy/bandwidth/update-config) — set filter default cho gói.
+- [Capability flag](/concepts/capabilities) — kiểm tra `bandwidth_package.is_bandwidth`.
+- [Product families](/concepts/product-families) — phân biệt bandwidth vs classic proxy.

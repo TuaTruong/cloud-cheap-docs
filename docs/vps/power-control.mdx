@@ -1,0 +1,90 @@
+---
+title: "Power control VPS"
+description: "Start / Stop / Reboot / Shutdown một VPS"
+---
+
+`POST /api/v2/customer/vps/power-control`
+
+Điều khiển nguồn cho 1 VPS — bật, tắt, khởi động lại, hoặc shutdown
+graceful. Đọc `capabilities.power_control.actions[]` để biết action nào
+khả dụng cho VPS đang xem.
+
+**Áp dụng cho**: VPS có `capabilities.power_control.can = true`
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+| `action` | enum | có | `power_on`, `power_off`, `reboot`, `shutdown`. |
+
+### Phân biệt actions
+
+| Action | Mô tả |
+|---|---|
+| `power_on` | Bật VPS từ trạng thái off. |
+| `power_off` | Tắt cứng (force) — như rút điện. |
+| `shutdown` | Tắt mềm (graceful) — gửi signal shutdown cho OS, đợi services tắt. |
+| `reboot` | Khởi động lại (shutdown + power_on). |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/power-control' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "action": "reboot" }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đã reboot VPS",
+  "code": "ok",
+  "data": {
+    "id": 4567,
+    "status": "active",
+    "action_status": "rebooting",
+    "main_ipv4": "203.0.113.10"
+  },
+  "meta": {}
+}
+```
+
+`action_status` cho biết action đang chạy (vd `rebooting`, `stopping`).
+Sau khi action xong, gọi [`/vps/list`](/vps/list) để xem state mới.
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `id` không thuộc user hoặc `action` không hợp lệ. |
+| 422 | `validation_failed` | Action không khả dụng cho VPS này (vd `power_on` khi đang `active`). |
+| 500 | `internal_error` | Lỗi server. |
+| 200 | `request_failed` | Provider từ chối — đọc `message`. |
+
+### Ví dụ — action không khả dụng
+
+```json
+{
+  "success": false,
+  "message": "Không thể thực hiện hành động: Bật máy",
+  "code": "validation_failed",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Action **chỉ chạy được** nếu nằm trong `actions[]` của VPS (xem [`/vps/list`](/vps/list)). UI nên check trước khi gửi request.
+- Action thực tế là **async** — request trả về ngay, provider xử lý sau. Đợi 5–30s rồi gọi [`/vps/list`](/vps/list) để xem state cuối.
+- `power_off` (force) có nguy cơ mất data đang ghi. Khuyến nghị `shutdown` (graceful).
+- Hành động ghi vào activity log.
+
+## Liên quan
+
+- [Config VPS](/vps/config) — reinstall, reset password, change IP.
+- [Capabilities](/concepts/capabilities)
+- [Danh sách VPS](/vps/list)

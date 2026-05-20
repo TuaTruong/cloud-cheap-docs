@@ -1,0 +1,157 @@
+---
+title: "Danh sách sản phẩm VPS"
+description: "Catalog các gói VPS active, nhóm theo product family, kèm capabilities mặc định"
+---
+
+`GET /api/v2/fetch-vps-products`
+
+Trả về toàn bộ sản phẩm VPS đang active, **nhóm theo product family**.
+Mỗi plan có sẵn `family`, `family_code` và `capabilities` mặc định.
+
+**Áp dụng cho**: 7 family VPS — Standard, Pro, Basic, Performance, Streaming, Custom, Promo
+**Auth**: Không bắt buộc
+**Rate limit**: Không có
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `locale` | enum `en` \| `vi` \| `fr` \| `zh` | không | Ngôn ngữ. Mặc định `en`. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/fetch-vps-products?locale=vi' \
+  -H 'Accept: application/json'
+```
+
+## Response thành công
+
+### Schema
+
+Top-level `data` là array of family groups. Mỗi group:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `family` | string | Vd `"VPS Standard"`, `"VPS Pro"`. |
+| `family_code` | string | Mã family (xem [Product families](/concepts/product-families)). |
+| `plans` | array | Danh sách plan thuộc family. |
+
+Mỗi plan:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Plan ID. |
+| `name` | string | Tên hiển thị. |
+| `plan` | string | Tên ngắn. |
+| `short_des` | string | Mô tả ngắn. |
+| `description` | string | Mô tả dài. |
+| `type` | string | `"vps"`. |
+| `service_type` | string | Phân loại. |
+| `price` | number | Giá hiển thị (VND). |
+| `family` / `family_code` | string | (Trùng group) |
+| `capabilities` | object | 9 capability flag mặc định cho family VPS. |
+| `client_features.fixed_addon_pricing` | boolean | Pricing fixed cho upgrade? |
+| `client_features.disk_step` | integer | Bước upgrade disk (GB) — `1` cho hầu hết, `10` cho VPS Pro. |
+| `badges` | string[] | Tag marketing: `"gpu"`, `"best_seller"`, … |
+| `options` | object | OS, region khả dụng. |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    {
+      "family": "VPS Standard",
+      "family_code": "vps_standard",
+      "plans": [
+        {
+          "id": 5,
+          "name": "VPS Standard — 2 CPU / 4GB / 60GB",
+          "plan": "Standard S2",
+          "short_des": "Datacenter VN, SSD NVMe",
+          "description": "VPS đầy đủ tính năng...",
+          "type": "vps",
+          "service_type": "vietnam_vps",
+          "price": 140000,
+          "family": "VPS Standard",
+          "family_code": "vps_standard",
+          "capabilities": {
+            "console":           { "can": true, "reason": null },
+            "network":           { "can": true, "reason": null },
+            "credentials":       { "can": true, "reason": null },
+            "change_password":   { "can": true, "reason": null },
+            "upgrade_bandwidth": { "can": true, "reason": null },
+            "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
+            "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
+            "upgrade":           { "can": true, "fixed_pricing": false, "disk_step_gb": 1, "reason": null },
+            "auto_renew":        { "can": true, "reason": null }
+          },
+          "client_features": {
+            "fixed_addon_pricing": false,
+            "disk_step": 1,
+            "fixed_addon_prices": null
+          },
+          "badges": ["best_seller"],
+          "options": {/* OS, region */}
+        }
+      ]
+    },
+    {
+      "family": "VPS Pro",
+      "family_code": "vps_pro",
+      "plans": [
+        {
+          "id": 34,
+          "name": "VPS Pro — 4 CPU / 8GB / 100GB",
+          "family": "VPS Pro",
+          "family_code": "vps_pro",
+          "capabilities": {
+            "console":           { "can": false, "reason": "family_unsupported" },
+            "network":           { "can": false, "reason": "family_unsupported" },
+            "credentials":       { "can": false, "reason": "family_unsupported" },
+            "change_password":   { "can": false, "reason": "family_unsupported" },
+            "upgrade_bandwidth": { "can": false, "reason": "family_unsupported" },
+            "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
+            "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
+            "upgrade":           { "can": true, "fixed_pricing": true, "disk_step_gb": 10, "reason": null },
+            "auto_renew":        { "can": true, "reason": null }
+          },
+          "client_features": {
+            "fixed_addon_pricing": true,
+            "disk_step": 10,
+            "fixed_addon_prices": { "cpu": 50000, "ram": 50000, "disk": 25000 }
+          },
+          "badges": []
+        }
+      ]
+    }
+  ],
+  "meta": { "locale": "en" }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Chỉ trả về plan `status = 'active'`.
+- **VPS Pro** dùng `fixed_addon_pricing = true` + `disk_step_gb = 10` — UI render giá upgrade khác với Standard.
+- `badges` dùng để hiển thị tag marketing (vd "Best Seller", "GPU available").
+- Frontend nên cache 5–15 phút.
+
+## Liên quan
+
+- [Lấy options chi tiết một plan](/catalog/fetch-product-options)
+- [Mua VPS](/vps/pay)
+- [Product families](/concepts/product-families)
+- [Capabilities](/concepts/capabilities)

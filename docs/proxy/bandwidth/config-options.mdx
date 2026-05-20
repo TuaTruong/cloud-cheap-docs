@@ -1,0 +1,144 @@
+---
+title: "Lấy options cấu hình bandwidth"
+description: "Liệt kê quốc gia, ASN, ISP, city khả dụng cho một gói bandwidth GB"
+---
+
+`POST /api/v2/customer/proxy/bandwidth-config-options`
+
+Trả về tập hợp các filter geo/network khả dụng cho **một gói bandwidth
+GB cụ thể** — dùng để render dropdown ở UI trước khi gọi
+[`generate-bandwidth-proxies`](/proxy/bandwidth/generate-proxies).
+
+**Áp dụng cho**: Proxy Bandwidth (GB) — `family_code: proxy_bandwidth`
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Khi nào dùng
+
+- User chọn 1 gói bandwidth đã mua → bạn cần biết quốc gia / ASN / ISP nào pool còn proxy.
+- Khi mở dialog cấu hình filter trước khi generate proxy list.
+- Khi user đổi quốc gia → gọi lại endpoint với `country_code` mới để biết ASN/ISP của quốc gia đó.
+
+## Request
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID gói bandwidth (từ `customer/proxy/list`). |
+| `order_number` | string | có | Mã đơn chứa gói bandwidth. Phải thuộc user. |
+| `country_code` | string (ISO-2) | không | Filter narrow theo quốc gia. |
+| `state_code` | string | không | Filter narrow theo tỉnh/bang. |
+| `city_code` | string | không | Filter narrow theo thành phố. |
+| `asn_code` | string | không | Filter narrow theo ASN. |
+| `proxy_type` | enum `rotating` \| `sticky` | không | Loại proxy muốn lọc options. |
+| `session` | string (1–64) | không | Session ID khi sticky. |
+| `proxy_sticky_times` | integer (1–120) | không | Số phút giữ session. |
+
+<Info>
+Gọi **lần đầu** không cần filter — lấy toàn bộ danh sách quốc gia khả dụng.
+Sau đó user chọn quốc gia → gọi lại với `country_code` để lấy ASN / ISP /
+city của quốc gia đó.
+</Info>
+
+### Ví dụ — gọi lần đầu
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/bandwidth-config-options' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 1234,
+    "order_number": "ORD-PROXY-001"
+  }'
+```
+
+### Ví dụ — sau khi chọn quốc gia US
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/bandwidth-config-options' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 1234,
+    "order_number": "ORD-PROXY-001",
+    "country_code": "US"
+  }'
+```
+
+## Response thành công
+
+### Schema
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `data.subtype_code` | enum `residential` \| `mobile` | Loại pool (đã rename từ SKU code nội bộ). |
+| `data.countries[]` | array | `{ code, name, proxies_count }`. Quốc gia có proxy khả dụng. |
+| `data.states[]` | array | Có khi đã chọn `country_code`. |
+| `data.cities[]` | array | Có khi đã chọn `country_code` (hoặc `state_code`). |
+| `data.asns[]` | array | `{ code, name, proxies_count }`. |
+| `data.isps[]` | array | `{ name, proxies_count }`. |
+| `data.session.min_minutes` | integer | Tối thiểu cho `proxy_sticky_times`. |
+| `data.session.max_minutes` | integer | Tối đa cho `proxy_sticky_times`. |
+| `data.balance_gb` | number | Số GB còn lại trong gói. |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "subtype_code": "residential",
+    "countries": [
+      { "code": "US", "name": "United States", "proxies_count": 1200000 },
+      { "code": "VN", "name": "Vietnam", "proxies_count": 320000 },
+      { "code": "SG", "name": "Singapore", "proxies_count": 180000 }
+    ],
+    "asns": [
+      { "code": "7922", "name": "Comcast Cable", "proxies_count": 250000 }
+    ],
+    "isps": [
+      { "name": "Comcast", "proxies_count": 200000 }
+    ],
+    "session": { "min_minutes": 1, "max_minutes": 120 },
+    "balance_gb": 87.5
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu `proxy_id` hoặc `order_number`. |
+| 403 | `forbidden` | Đơn không thuộc user. |
+| 422 | `feature_unavailable` | Proxy không phải gói bandwidth (`bandwidth_package.is_bandwidth = false`). |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — không phải gói bandwidth
+
+```json
+{
+  "success": false,
+  "message": "Gói này không hỗ trợ tính năng bandwidth config",
+  "code": "feature_unavailable",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- `subtype_code` là field neutral — không lộ SKU code nội bộ (kiểu `IPC_BANDWIDTH_RESIDENTIAL`).
+- `proxies_count` cập nhật theo realtime — có thể giảm nếu pool bị burn.
+- Filter narrow (chọn `country_code` rồi gọi lại) giúp UI render nhanh hơn — không cần load tất cả ASN của mọi quốc gia.
+- Sau khi user chọn filter mong muốn, lưu lại + gọi [`update-config`](/proxy/bandwidth/update-config) để set làm default, hoặc gọi thẳng [`generate-proxies`](/proxy/bandwidth/generate-proxies) để sinh proxy.
+
+## Liên quan
+
+- [Cập nhật cấu hình mặc định](/proxy/bandwidth/update-config)
+- [Sinh danh sách proxy](/proxy/bandwidth/generate-proxies)
+- [Danh sách proxy](/proxy/list)

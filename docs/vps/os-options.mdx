@@ -1,0 +1,71 @@
+---
+title: "OS options khả dụng cho VPS"
+description: "Liệt kê hệ điều hành có thể cài lại cho 1 VPS cụ thể"
+---
+
+`GET /api/v2/customer/vps/{id}/os-options`
+
+Trả về danh sách OS có thể cài đặt/cài lại cho VPS hiện tại. Dùng khi
+mở dialog "Reinstall OS" trong UI.
+
+**Áp dụng cho**: Mọi family VPS
+**Auth**: Bearer token
+
+## Request
+
+### Path parameters
+
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | VPS ID. Phải thuộc user. |
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/vps/4567/os-options' \
+  -H 'Authorization: Bearer 1|...'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": {
+    "current": {
+      "os_type": "ubuntu",
+      "os_version": "22.04"
+    },
+    "available": [
+      { "id": "ubuntu-22.04", "os_type": "ubuntu", "os_version": "22.04", "name": "Ubuntu 22.04 LTS" },
+      { "id": "ubuntu-24.04", "os_type": "ubuntu", "os_version": "24.04", "name": "Ubuntu 24.04 LTS" },
+      { "id": "centos-9", "os_type": "centos", "os_version": "9", "name": "CentOS Stream 9" },
+      { "id": "win-2022", "os_type": "windows", "os_version": "2022", "name": "Windows Server 2022" }
+    ]
+  },
+  "meta": {}
+}
+```
+
+| Field | Mô tả |
+|---|---|
+| `current` | OS đang chạy. |
+| `available[]` | Danh sách OS có thể chọn. Mỗi item có `id` để truyền vào [`config` action `reinstall_custom_os`](/vps/config). |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 404 | `not_found` | VPS không tồn tại. |
+| 403 | `forbidden` | VPS không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Danh sách OS tuỳ thuộc provider + plan. Một số plan giới hạn (vd VPS Streaming chỉ Windows + một số Linux).
+- Cài Windows yêu cầu **RAM tối thiểu 2 GB** — nếu VPS RAM thấp hơn, Windows không xuất hiện trong list.
+- Để dùng OS từ list: gọi [`config` với `action=reinstall_custom_os` + `os_version=<id từ list>`](/vps/config).
+
+## Liên quan
+
+- [Config VPS (reinstall)](/vps/config)
+- [Actions khả dụng](/vps/actions)

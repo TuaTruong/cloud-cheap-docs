@@ -1,0 +1,109 @@
+---
+title: "Bật / tắt auto-renew"
+description: "Set auto-renew cho nhiều proxy cùng lúc"
+---
+
+`POST /api/v2/customer/proxy/auto-renew-proxy-list`
+
+Bật hoặc tắt cơ chế tự động gia hạn cho một danh sách proxy. Khi bật,
+hệ thống sẽ tự renew proxy theo `period` của plan ban đầu khi proxy
+sắp hết hạn (24h trước `expired_at`).
+
+**Áp dụng cho**: Proxy có `capabilities.auto_renew.can = true`
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `ids[]` | array of integer | có | ID các proxy cần thay đổi. Phải thuộc user. |
+| `is_auto_renewal` | boolean | có | `true` = bật, `false` = tắt. |
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/auto-renew-proxy-list' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "ids": [5678, 5679, 5680],
+    "is_auto_renewal": true
+  }'
+```
+
+## Response thành công
+
+API trả về kết quả tổng + chi tiết theo từng proxy:
+
+```json
+{
+  "success": true,
+  "message": "Bật auto-renew cho tất cả proxy thành công",
+  "code": "ok",
+  "data": [
+    { "id": 5678, "auto_renew": true, "public_ip": "203.0.113.45" },
+    { "id": 5679, "auto_renew": true, "public_ip": "203.0.113.46" },
+    { "id": 5680, "auto_renew": true, "public_ip": "203.0.113.47" }
+  ],
+  "meta": {}
+}
+```
+
+Khi **một phần** thành công (ví dụ 2/3):
+
+```json
+{
+  "success": true,
+  "message": "Bật auto-renew thành công một phần",
+  "code": "ok",
+  "data": [/* danh sách proxy với state hiện tại */],
+  "meta": {}
+}
+```
+
+Khi **toàn bộ thất bại**:
+
+```json
+{
+  "success": false,
+  "message": "Không thể bật auto-renew cho tất cả proxy",
+  "code": "request_failed",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `ids` rỗng, hoặc chứa ID không tồn tại. |
+| 403 | `forbidden` | Có ID không thuộc user. Response có thêm field `invalid_proxy_ids[]`. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — có proxy không thuộc user
+
+```json
+{
+  "success": false,
+  "message": "Có proxy không thuộc user",
+  "code": "forbidden",
+  "errors": {},
+  "meta": {
+    "invalid_proxy_ids": [9999]
+  }
+}
+```
+
+## Business notes
+
+- Auto-renew chỉ hoạt động khi `capabilities.auto_renew.can = true` cho từng proxy. Proxy bandwidth, residential rotating với plan không hỗ trợ → bị bỏ qua silent.
+- Khi auto-renew chạy: nếu `balance` không đủ → renew fail, proxy bị mark `expired`. Hệ thống gửi email cảnh báo trước 24h.
+- Tắt auto-renew **không** huỷ đơn — chỉ ngăn renew tự động trong tương lai.
+
+## Liên quan
+
+- [Gia hạn 1 proxy](/proxy/renew)
+- [Capabilities](/concepts/capabilities)
+- [Danh sách proxy](/proxy/list)

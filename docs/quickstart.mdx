@@ -1,0 +1,157 @@
+---
+title: "Quickstart"
+description: "Từ tạo API token đến gọi request đầu tiên trong 5 phút"
+---
+
+Bài này giúp bạn integrate end-to-end trong **5 phút**. Mục tiêu: gọi
+thành công `GET /api/v2/customer/profile` và lấy thông tin tài khoản.
+
+## Bước 1 — Lấy API token (1 phút)
+
+<Steps>
+  <Step title="Đăng nhập">
+    Vào [cloud-cheap.com](https://cloud-cheap.com) và đăng nhập tài khoản
+    reseller.
+  </Step>
+  <Step title="Mở trang Account Settings">
+    Click avatar góc phải → **Account Settings** → tab **API Token**.
+  </Step>
+  <Step title="Tạo / refresh token">
+    Click **Tạo API Token mới**. Token hiện trên màn hình **chỉ một lần** —
+    copy ngay.
+    <Warning>
+      Mỗi lần refresh, **toàn bộ token cũ bị huỷ**. Nếu bạn đang dùng token
+      cũ ở nhiều nơi, cần cập nhật hết.
+    </Warning>
+  </Step>
+</Steps>
+
+Bạn có token, ví dụ:
+
+```
+1|abcdef1234567890ghijklmnop
+```
+
+## Bước 2 — Gọi request đầu tiên (2 phút)
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET 'https://cloud-cheap.com/api/v2/customer/profile' \
+  -H 'Authorization: Bearer 1|abcdef1234567890ghijklmnop' \
+  -H 'Accept: application/json'
+```
+
+```php PHP cURL
+<?php
+
+$apiToken = '1|abcdef1234567890ghijklmnop';
+
+$ch = curl_init('https://cloud-cheap.com/api/v2/customer/profile');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => [
+        'Authorization: Bearer ' . $apiToken,
+        'Accept: application/json',
+    ],
+]);
+
+$body = curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+echo "HTTP $status\n";
+echo $body . "\n";
+```
+
+```javascript Node fetch
+const apiToken = '1|abcdef1234567890ghijklmnop';
+
+const res = await fetch('https://cloud-cheap.com/api/v2/customer/profile', {
+  headers: {
+    Authorization: `Bearer ${apiToken}`,
+    Accept: 'application/json',
+  },
+});
+
+const body = await res.json();
+console.log(res.status, body);
+```
+
+</CodeGroup>
+
+## Bước 3 — Đọc response (1 phút)
+
+Response thành công (HTTP 200):
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "id": 123,
+    "name": "Reseller A",
+    "email": "reseller@example.com",
+    "balance": 500000,
+    "affiliate_code": "RA-123",
+    "affiliate_link": "https://cloud-cheap.com/register?ref=RA-123"
+  },
+  "meta": {}
+}
+```
+
+**3 field quan trọng**:
+
+- `success` (boolean) — `true` = thành công, `false` = lỗi.
+- `code` (string) — mã lỗi máy đọc được. Khi thành công luôn là `"ok"`.
+- `data` (object | array) — payload thật.
+
+## Bước 4 — Xử lý lỗi (1 phút)
+
+Token sai → HTTP **401**:
+
+```json
+{
+  "success": false,
+  "message": "Unauthenticated.",
+  "code": "unauthenticated",
+  "errors": {},
+  "meta": {}
+}
+```
+
+Validation fail (ví dụ thiếu field bắt buộc) → HTTP **422**:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "code": "validation_failed",
+  "errors": {
+    "plan_id": ["The plan id field is required."]
+  },
+  "meta": {}
+}
+```
+
+Toàn bộ bảng error code: [Error model](/error-model).
+
+## Bước 5 — Tiếp theo
+
+Tuỳ mục tiêu của bạn:
+
+<CardGroup cols={2}>
+  <Card title="Bán Proxy" icon="globe" href="/proxy/list">
+    Bắt đầu với `fetch-proxy-products` rồi `customer/proxy/pay`.
+  </Card>
+  <Card title="Bán VPS" icon="server" href="/vps/list">
+    Bắt đầu với `fetch-vps-products` rồi `customer/vps/pay`.
+  </Card>
+  <Card title="Hiểu Family + Capability" icon="diagram-project" href="/concepts/product-families">
+    Sản phẩm chia thành family như thế nào và capability flag dùng ra sao.
+  </Card>
+  <Card title="Migration v1 → v2" icon="arrow-right-arrow-left" href="/migration-v1-to-v2">
+    Nếu đang dùng v1, xem diff giữa hai phiên bản.
+  </Card>
+</CardGroup>

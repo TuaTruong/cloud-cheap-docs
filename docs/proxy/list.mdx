@@ -1,0 +1,136 @@
+---
+title: "Danh sách proxy"
+description: "Liệt kê proxy của tài khoản, kèm family + capabilities cho mỗi record"
+---
+
+`GET /api/v2/customer/proxy/list`
+
+Lấy danh sách proxy user đang sở hữu. Mỗi record có sẵn `family`,
+`family_code`, `capabilities` (đã áp runtime override) — bạn dùng để
+render UI quản lý proxy.
+
+**Áp dụng cho**: Mọi family Proxy
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `page` | integer | không | Trang. Mặc định `1`. |
+| `per_page` | integer (1–100) | không | Số record mỗi trang. Mặc định `10`. |
+| `order_id` | integer | không | Lọc theo 1 đơn hàng. |
+| `search` | string | không | Tìm theo IP, port, tag. |
+| `protocol` | string | không | Lọc theo `http`/`socks5`/protocol khác. |
+| `status` | string | không | Lọc theo trạng thái proxy (vd `active`, `expired`). |
+| `anonymity_level` | string | không | `transparent` / `anonymous` / `elite`. |
+| `type` | string | không | Loại proxy nội bộ. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/proxy/list?per_page=20&status=active' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Accept: application/json'
+```
+
+## Response thành công
+
+### Schema
+
+`data` là array proxy records. Mỗi record:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Proxy ID nội bộ. |
+| `family` / `family_code` | string | Family hiển thị + machine code. |
+| `public_ip` | string | IP công khai. |
+| `port` | integer | Cổng truy cập. |
+| `protocol` | string | `"http"` / `"socks5"`. |
+| `protocols` | array | Tập protocol khả dụng (nếu hỗ trợ nhiều). |
+| `username` | string | Auth user. |
+| `password` | string | Auth password. |
+| `auth_whitelist_ip` | string \| null | Whitelist IP (khi auth bằng IP). |
+| `country` / `region` / `city` / `isp` | string \| null | Thông tin geo. |
+| `anonymity_level` | string | Mức độ ẩn danh. |
+| `network_type` | string | `datacenter`, `residential`, `mobile`. |
+| `status` | string | `active`, `expired`, `disabled`. |
+| `change_ip_time` | string \| null | Format `HH:MM:SS`, thời gian xoay IP (proxy rotating). |
+| `next_change_ip_time` | ISO datetime \| null | Thời điểm xoay IP tiếp theo. |
+| `min_change_ip_time` | integer | Số giây tối thiểu giữa các lần xoay. |
+| `expired_at` | ISO datetime | Hạn dùng. |
+| `auto_renew_enabled` | boolean | Có cho phép auto-renew không. |
+| `auto_renew` | boolean | Đang bật auto-renew không. |
+| `notes` | string \| null | Ghi chú của assignment. |
+| `capabilities` | object | 8 flag capability — xem [Capabilities](/concepts/capabilities). |
+| `price` | number | Giá bán cho khách (VND). |
+
+`meta.pagination`: giống [Histories](/histories/payments).
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    {
+      "id": 5678,
+      "family": "Proxy IPv4 Datacenter",
+      "family_code": "proxy_ipv4_datacenter",
+      "public_ip": "203.0.113.45",
+      "port": 8080,
+      "protocol": "http",
+      "username": "u_AbC123",
+      "password": "p_XyZ789",
+      "country": "US",
+      "city": "California",
+      "anonymity_level": "elite",
+      "network_type": "datacenter",
+      "status": "active",
+      "expired_at": "2026-06-18T00:00:00Z",
+      "auto_renew_enabled": true,
+      "auto_renew": false,
+      "notes": "Account A — campaign US",
+      "price": 50000,
+      "capabilities": {
+        "change_ip":          { "can": true, "cost": 0, "reason": null },
+        "change_auth":        { "can": true, "auth_types": ["user_pass"], "reason": null },
+        "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+        "renew":              { "can": true, "min_days": 3, "reason": null },
+        "auto_renew":         { "can": true, "reason": null },
+        "export":             { "can": true, "reason": null },
+        "bandwidth_package":  { "is_bandwidth": false },
+        "public_access_key":  { "can": true, "endpoints": ["current","new"], "reason": null }
+      }
+    }
+  ],
+  "meta": {
+    "pagination": { "page": 1, "per_page": 20, "total": 47, "last_page": 3 }
+  }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token sai. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Field `provider`, `cost_price`, `provider_response`, `provider_extra`, `internal_extra` **không bao giờ** xuất hiện.
+- `capabilities` đã apply runtime override (vd `change_ip.can = false` nếu proxy này không hỗ trợ dù family hỗ trợ).
+- UI nên render nút thao tác **theo `capabilities`**, không hard-code theo `family_code`.
+
+## Liên quan
+
+- [Danh sách đơn proxy](/proxy/orders)
+- [Đổi IP](/proxy/change-ip)
+- [Đổi auth](/proxy/change-auth)
+- [Gia hạn proxy](/proxy/renew)
+- [Capabilities](/concepts/capabilities)

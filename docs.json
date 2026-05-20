@@ -1,0 +1,137 @@
+{
+  "$schema": "https://docs.page/schema.json",
+  "name": "FireCloud API v2",
+  "description": "Tài liệu API v2 cho reseller / agency tích hợp dịch vụ proxy và VPS.",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "theme": {
+    "primary": "#0EA5E9",
+    "primaryLight": "#38BDF8",
+    "primaryDark": "#0284C7"
+  },
+  "header": {
+    "showThemeToggle": true,
+    "showName": true
+  },
+  "anchors": [
+    {
+      "title": "Postman Collection",
+      "icon": "play",
+      "href": "https://github.com/TuaTruong/cloud-cheap/blob/main/Postman/v2/FireCloud-API-V2.postman_collection.json"
+    },
+    {
+      "title": "Portal",
+      "icon": "globe",
+      "href": "https://cloud-cheap.com"
+    }
+  ],
+  "social": {
+    "telegram": "cloudcheap",
+    "facebook": "cloudcheap"
+  },
+  "sidebar": [
+    {
+      "group": "Bắt đầu",
+      "pages": [
+        { "title": "Giới thiệu", "href": "/introduction", "icon": "house" },
+        { "title": "Quickstart", "href": "/quickstart", "icon": "rocket" },
+        { "title": "Authentication", "href": "/authentication", "icon": "key" },
+        { "title": "Error model", "href": "/error-model", "icon": "triangle-exclamation" },
+        { "title": "Migration v1 → v2", "href": "/migration-v1-to-v2", "icon": "arrow-right-arrow-left" }
+      ]
+    },
+    {
+      "group": "Khái niệm cốt lõi",
+      "pages": [
+        { "title": "Product families", "href": "/concepts/product-families", "icon": "tags" },
+        { "title": "Capability flags", "href": "/concepts/capabilities", "icon": "toggle-on" }
+      ]
+    },
+    {
+      "group": "Catalog & Sản phẩm",
+      "pages": [
+        { "title": "Tra cứu mã giảm giá", "href": "/catalog/fetch-coupon" },
+        { "title": "Danh sách sản phẩm Proxy", "href": "/catalog/fetch-proxy-products" },
+        { "title": "Danh sách sản phẩm VPS", "href": "/catalog/fetch-vps-products" },
+        { "title": "Lấy options chi tiết một plan", "href": "/catalog/fetch-product-options" }
+      ]
+    },
+    {
+      "group": "Tài khoản & Lịch sử",
+      "pages": [
+        { "title": "Thông tin tài khoản", "href": "/account/profile" },
+        { "title": "Làm mới API token", "href": "/account/refresh-api-token" },
+        { "title": "Lịch sử thanh toán", "href": "/histories/payments" },
+        { "title": "Lịch sử hoạt động", "href": "/histories/activities" }
+      ]
+    },
+    {
+      "group": "Proxy — Static / Rotating",
+      "pages": [
+        { "title": "Danh sách proxy", "href": "/proxy/list" },
+        { "title": "Danh sách đơn proxy", "href": "/proxy/orders" },
+        { "title": "Mua proxy", "href": "/proxy/pay" },
+        { "title": "Export proxy", "href": "/proxy/export" },
+        { "title": "Copy proxy", "href": "/proxy/copy" },
+        { "title": "Ghi chú đơn / proxy", "href": "/proxy/notes" },
+        { "title": "Chuyển đơn", "href": "/proxy/transfer" },
+        { "title": "Huỷ đơn", "href": "/proxy/cancel-order" },
+        { "title": "Đồng bộ trạng thái", "href": "/proxy/refresh" },
+        { "title": "Gia hạn proxy", "href": "/proxy/renew" },
+        { "title": "Auto-renew nhiều proxy", "href": "/proxy/auto-renew" },
+        { "title": "Đổi IP", "href": "/proxy/change-ip" },
+        { "title": "Đổi auth", "href": "/proxy/change-auth" },
+        { "title": "Đổi rotate time", "href": "/proxy/change-rotate-time" },
+        { "title": "Public access key", "href": "/proxy/public-access-key" }
+      ]
+    },
+    {
+      "group": "Proxy Bandwidth (GB)",
+      "pages": [
+        { "title": "Lấy options bandwidth", "href": "/proxy/bandwidth/config-options" },
+        { "title": "Cập nhật cấu hình", "href": "/proxy/bandwidth/update-config" },
+        { "title": "Sinh danh sách proxy", "href": "/proxy/bandwidth/generate-proxies" }
+      ]
+    },
+    {
+      "group": "VPS",
+      "pages": [
+        { "title": "Danh sách VPS", "href": "/vps/list" },
+        { "title": "Danh sách đơn VPS", "href": "/vps/orders" },
+        { "title": "Mua VPS", "href": "/vps/pay" },
+        { "title": "Ghi chú đơn / VPS", "href": "/vps/notes" },
+        { "title": "Huỷ đơn VPS", "href": "/vps/cancel" },
+        { "title": "Đồng bộ trạng thái", "href": "/vps/refresh" },
+        { "title": "Chuyển VPS", "href": "/vps/transfer" },
+        { "title": "Ẩn VPS", "href": "/vps/hide" },
+        { "title": "Gia hạn VPS", "href": "/vps/renew" },
+        { "title": "Auto-renew nhiều VPS", "href": "/vps/auto-renew" },
+        { "title": "Power control", "href": "/vps/power-control" },
+        { "title": "Cấu hình VPS", "href": "/vps/config" },
+        { "title": "Nâng cấp VPS", "href": "/vps/upgrade" },
+        { "title": "OS options khả dụng", "href": "/vps/os-options" },
+        { "title": "Actions khả dụng", "href": "/vps/actions" },
+        { "title": "Console VNC", "href": "/vps/console" },
+        { "title": "Network info", "href": "/vps/network" },
+        { "title": "Credentials", "href": "/vps/credentials" },
+        { "title": "Đổi password VPS", "href": "/vps/change-password" },
+        { "title": "Nâng tốc độ mạng", "href": "/vps/upgrade-bandwidth" }
+      ]
+    },
+    {
+      "group": "Tham khảo nội bộ",
+      "pages": [
+        { "title": "Endpoint anatomy template", "href": "/_template/endpoint-anatomy" }
+      ]
+    }
+  ],
+  "search": {
+    "docsearch": {}
+  },
+  "seo": {
+    "noindex": false
+  }
+}

@@ -1,0 +1,119 @@
+---
+title: "Cập nhật cấu hình bandwidth mặc định"
+description: "Lưu filter geo/sticky làm default cho gói GB — proxy sinh sau sẽ dùng filter này"
+---
+
+`POST /api/v2/customer/proxy/update-bandwidth-config`
+
+Ghi nhận cấu hình filter mặc định cho một gói bandwidth. Mọi
+[`generate-bandwidth-proxies`](/proxy/bandwidth/generate-proxies) sau đó
+sẽ dùng filter này nếu user không truyền filter override.
+
+**Áp dụng cho**: Proxy Bandwidth (GB) — `family_code: proxy_bandwidth`
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Khi nào dùng
+
+- User cấu hình gói GB cho project — set quốc gia / ASN / proxy_type mặc định.
+- Sau đó mọi lần generate proxy chỉ cần truyền `proxy_id` + `number_proxy`,
+  hệ thống tự apply filter đã lưu.
+
+## Request
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID gói bandwidth. |
+| `order_number` | string | có | Mã đơn. Phải thuộc user. |
+| `country_code` | string (ISO-2) | không | Filter quốc gia. |
+| `state_code` | string | không | Filter tỉnh/bang. |
+| `city_code` | string | không | Filter thành phố. |
+| `asn_code` | string | không | Filter ASN. |
+| `proxy_type` | enum `rotating` \| `sticky` | không | Mặc định `rotating`. |
+| `session` | string (1–64) | không | Session ID khi sticky. |
+| `proxy_sticky_times` | integer (1–120) | có nếu `proxy_type=sticky` | Số **phút** giữ session. |
+
+<Info>
+Field không truyền = clear giá trị cũ (về default rotating). Nếu muốn giữ
+một số filter, truyền lại đầy đủ.
+</Info>
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/update-bandwidth-config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 1234,
+    "order_number": "ORD-PROXY-001",
+    "country_code": "US",
+    "proxy_type": "sticky",
+    "proxy_sticky_times": 10
+  }'
+```
+
+## Response thành công
+
+Trả về cấu hình hiện tại sau update (bao gồm các field đã clear):
+
+```json
+{
+  "success": true,
+  "message": "Cập nhật cấu hình bandwidth thành công",
+  "code": "ok",
+  "data": {
+    "id": 1234,
+    "public_ip": "203.0.113.45",
+    "port": 8080,
+    "config": {
+      "country_code": "US",
+      "state_code": null,
+      "city_code": null,
+      "asn_code": null,
+      "proxy_type": "sticky",
+      "session": "auto-generated-session-id",
+      "proxy_sticky_times": 10
+    },
+    "expired_at": null,
+    "balance_gb": 87.5
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu param, hoặc `proxy_sticky_times` thiếu khi `proxy_type=sticky`. |
+| 403 | `forbidden` | Đơn không thuộc user. |
+| 422 | `feature_unavailable` | Proxy không phải gói bandwidth. |
+| 503 | `internal_error` | Provider phía sau từ chối update. Thử lại sau. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — provider reject
+
+```json
+{
+  "success": false,
+  "message": "Cập nhật cấu hình bandwidth thất bại",
+  "code": "internal_error",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Cấu hình **không** ảnh hưởng đến các proxy đã sinh trước đó — chỉ apply cho proxy generate **sau** lần update.
+- Có thể gọi nhiều lần — mỗi lần overwrite cấu hình cũ.
+- Bạn vẫn có thể truyền override filter khi gọi `generate-proxies` — filter ở request `generate` ưu tiên hơn config mặc định.
+
+## Liên quan
+
+- [Lấy options cấu hình](/proxy/bandwidth/config-options) — biết filter nào hợp lệ.
+- [Sinh proxy](/proxy/bandwidth/generate-proxies)
+- [Capabilities](/concepts/capabilities)

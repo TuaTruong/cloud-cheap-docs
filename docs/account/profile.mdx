@@ -1,0 +1,102 @@
+---
+title: "Thông tin tài khoản"
+description: "Lấy hồ sơ user, số dư, affiliate link"
+---
+
+`GET /api/v2/customer/profile`
+
+Lấy thông tin tài khoản reseller đang đăng nhập (theo Bearer token).
+Thường dùng để hiển thị header phía reseller portal hoặc xác thực
+trạng thái session.
+
+**Áp dụng cho**: User đã có Bearer token
+**Auth**: Bearer token (xem [Authentication](/authentication))
+**Rate limit**: Không có
+
+## Request
+
+Không cần body. Token đính kèm trong header `Authorization`.
+
+### Ví dụ
+
+<CodeGroup>
+
+```bash cURL
+curl 'https://cloud-cheap.com/api/v2/customer/profile' \
+  -H 'Authorization: Bearer 1|abc...' \
+  -H 'Accept: application/json'
+```
+
+```php PHP
+$ch = curl_init('https://cloud-cheap.com/api/v2/customer/profile');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => [
+        'Authorization: Bearer ' . $apiToken,
+        'Accept: application/json',
+    ],
+]);
+$body = curl_exec($ch);
+$response = json_decode($body, true);
+```
+
+</CodeGroup>
+
+## Response thành công
+
+### Schema
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `data.id` | integer | User ID nội bộ. |
+| `data.name` | string | Tên hiển thị. |
+| `data.email` | string | Email đăng ký. |
+| `data.phone` | string \| null | Số điện thoại. |
+| `data.balance` | number | Số dư hiện tại (VND). |
+| `data.affiliate_code` | string | Mã referral. |
+| `data.affiliate_link` | string | URL referral hoàn chỉnh. |
+| `data.bank_code` | string \| null | Mã ngân hàng đã lưu (vd `"VCB"`, `"ACB"`). |
+| `data.facebook` | string \| null | URL Facebook. |
+| `data.telegram` | string \| null | Username/URL Telegram. |
+| `data.created_at` | ISO datetime | Thời điểm đăng ký. |
+
+<Warning>
+Field `api_token` **không bao giờ** xuất hiện trong response này. Nếu cần
+lấy token mới, dùng [`POST /refresh-api-token`](/account/refresh-api-token).
+</Warning>
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "id": 123,
+    "name": "Reseller A",
+    "email": "reseller@example.com",
+    "phone": "0123456789",
+    "balance": 500000,
+    "affiliate_code": "RA-123",
+    "affiliate_link": "https://cloud-cheap.com/register?ref=RA-123",
+    "bank_code": "VCB",
+    "facebook": "https://fb.me/reseller-a",
+    "telegram": "@reseller_a",
+    "created_at": "2025-01-15T08:30:00Z"
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token thiếu / sai / đã bị refresh. |
+
+## Liên quan
+
+- [Authentication](/authentication)
+- [Refresh API token](/account/refresh-api-token)
+- [Lịch sử thanh toán](/histories/payments)

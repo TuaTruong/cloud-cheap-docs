@@ -1,0 +1,124 @@
+---
+title: "Danh sách VPS"
+description: "Liệt kê VPS của tài khoản kèm family + capabilities cho mỗi record"
+---
+
+`GET /api/v2/customer/vps/list`
+
+Lấy danh sách VPS user đang sở hữu. Mỗi record có `family`, `family_code`,
+`capabilities` (đã áp runtime override) để UI biết hiển thị nút nào.
+
+**Áp dụng cho**: 7 family VPS
+**Auth**: Bearer token
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `page` | integer | không | Trang. Mặc định `1`. |
+| `per_page` | integer (1–100) | không | Số record mỗi trang. Mặc định `10`. |
+| `order_id` | integer | không | Lọc theo 1 đơn. |
+| `search` | string | không | Tìm theo `hostname` / `main_ipv4`. |
+| `status` | string | không | Lọc theo trạng thái (`active`, `expired`, `provisioning`, …). |
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/vps/list?per_page=20&status=active' \
+  -H 'Authorization: Bearer 1|...'
+```
+
+## Response thành công
+
+### Schema
+
+Mỗi VPS record:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | VPS ID. |
+| `family` / `family_code` | string | Family hiển thị + code (xem [Product families](/concepts/product-families)). |
+| `hostname` | string | Hostname VPS. |
+| `os_type` / `os_version` | string | Hệ điều hành đang chạy. |
+| `period` | string | Chu kỳ thanh toán (`monthly`, `quarterly`, …). |
+| `price` | number | Giá bán cho khách (VND). |
+| `status` | string | `active`, `expired`, `provisioning`, `suspended`. |
+| `action_status` | string \| null | Action đang chạy (`reinstalling`, `upgrading`, …). |
+| `config.cpu` / `config.ram` / `config.disk` | integer | Cấu hình hiện tại. |
+| `config.bandwidth_mbps` | integer | Tốc độ network (Mbps). |
+| `location` | string | Vị trí datacenter (vd `"Việt Nam - FPT"`). |
+| `main_ipv4` | string | IP chính. |
+| `ipv4_addresses[]` | array | Tất cả IPv4. |
+| `ipv6_addresses[]` | array | Tất cả IPv6. |
+| `ipv6_subnets[]` | array | IPv6 subnet (nếu có). |
+| `vps_username` | string | User SSH. |
+| `actions[]` | string[] | List action khả dụng runtime (vd `["power_on","reboot","reinstall_current_os"]`). |
+| `expired_at` | ISO datetime | Hạn dùng. |
+| `auto_extend` | boolean | Bật auto-renew? |
+| `is_auto_renewing` | boolean | Đang trong quá trình renew? |
+| `notes` | string \| null | Ghi chú của user. |
+| `capabilities` | object | 9 capability flag (xem [Capabilities](/concepts/capabilities)). |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": [
+    {
+      "id": 4567,
+      "family": "VPS Standard",
+      "family_code": "vps_standard",
+      "hostname": "vm-prod-01",
+      "os_type": "ubuntu",
+      "os_version": "22.04",
+      "period": "monthly",
+      "price": 140000,
+      "status": "active",
+      "config": { "cpu": 2, "ram": 4, "disk": 60, "bandwidth_mbps": 100 },
+      "location": "Việt Nam - FPT",
+      "main_ipv4": "203.0.113.10",
+      "ipv4_addresses": ["203.0.113.10"],
+      "ipv6_addresses": ["2001:db8::1"],
+      "vps_username": "root",
+      "actions": ["power_on","power_off","reboot","reinstall_current_os","reset_root_password","change_ip"],
+      "expired_at": "2026-06-18T00:00:00Z",
+      "auto_extend": true,
+      "capabilities": {
+        "console":           { "can": true, "reason": null },
+        "network":           { "can": true, "reason": null },
+        "credentials":       { "can": true, "reason": null },
+        "change_password":   { "can": true, "reason": null },
+        "upgrade_bandwidth": { "can": true, "reason": null },
+        "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
+        "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
+        "upgrade":           { "can": true, "fixed_pricing": false, "disk_step_gb": 1, "reason": null },
+        "auto_renew":        { "can": true, "reason": null }
+      }
+    }
+  ],
+  "meta": { "pagination": { "page": 1, "per_page": 20, "total": 12, "last_page": 1 } }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token sai. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- `provider`, `provider_vps_id`, `cost_price`, `provider_response`, `internal_extra`, `provider_extra` **không** trả ra.
+- `root_password` xuất hiện trong field này nhưng nên **không hiển thị mặc định** trên UI — yêu cầu user click "Show" mới reveal.
+- `actions[]` tính runtime — chỉ chứa các action thực sự có thể chạy ngay (vd VPS đang `provisioning` → `actions = []`).
+- `capabilities` đã áp runtime override (vd `console.can = false` nếu VPS thiếu `main_ipv4`).
+
+## Liên quan
+
+- [Danh sách đơn VPS](/vps/orders)
+- [Power control](/vps/power-control)
+- [Config VPS](/vps/config)
+- [Capabilities](/concepts/capabilities)

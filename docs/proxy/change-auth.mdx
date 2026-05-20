@@ -1,0 +1,118 @@
+---
+title: "Đổi auth proxy"
+description: "Đổi username/password hoặc set IP whitelist cho proxy"
+---
+
+`POST /api/v2/customer/proxy/change-proxy-auth`
+
+Đổi cơ chế xác thực của proxy: hoặc đặt `username + password` mới, hoặc
+chuyển sang whitelist IP (không cần auth, chỉ cho phép IP cụ thể truy cập).
+
+**Áp dụng cho**: Proxy có `capabilities.change_auth.can = true`. Đọc
+`capabilities.change_auth.auth_types[]` để biết kiểu auth hỗ trợ.
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID proxy. |
+| `order_number` | string | có | Mã đơn chứa proxy. |
+| `proxy_auth_type` | enum `USER_PASS` \| `IP_ADDRESS` | có | Cơ chế auth mới. |
+| `proxy_auth_username` | string | có khi `proxy_auth_type=USER_PASS` | Username mới. |
+| `proxy_auth_password` | string | có khi `proxy_auth_type=USER_PASS` | Password mới. |
+| `proxy_auth_ip` | string | có khi `proxy_auth_type=IP_ADDRESS` | IP whitelist (IPv4). |
+
+### Ví dụ — đổi user/pass
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/change-proxy-auth' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 5678,
+    "order_number": "ORD-PROXY-001",
+    "proxy_auth_type": "USER_PASS",
+    "proxy_auth_username": "newuser",
+    "proxy_auth_password": "newSecretPass!"
+  }'
+```
+
+### Ví dụ — đổi sang whitelist IP
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/change-proxy-auth' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 5678,
+    "order_number": "ORD-PROXY-001",
+    "proxy_auth_type": "IP_ADDRESS",
+    "proxy_auth_ip": "203.0.113.99"
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đổi xác thực thành công",
+  "code": "ok",
+  "data": {
+    "id": 5678,
+    "username": "newuser",
+    "password": "newSecretPass!",
+    "auth_whitelist_ip": null
+  },
+  "meta": {}
+}
+```
+
+Khi `proxy_auth_type=IP_ADDRESS`:
+
+```json
+{
+  "data": {
+    "id": 5678,
+    "username": "",
+    "password": "",
+    "auth_whitelist_ip": "203.0.113.99"
+  }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu `proxy_auth_username`/`password` khi USER_PASS, hoặc `proxy_auth_ip` khi IP_ADDRESS. |
+| 403 | `forbidden` | Proxy không thuộc user. |
+| 422 | `feature_unavailable` | Whitelist IP không hỗ trợ cho proxy này (xem `auth_types`). |
+| 503 | `internal_error` | Provider tạm thời không xử lý được. Thử lại sau. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — whitelist không hỗ trợ
+
+```json
+{
+  "success": false,
+  "message": "Proxy này không hỗ trợ xác thực bằng whitelist IP",
+  "code": "feature_unavailable",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Đọc `capabilities.change_auth.auth_types[]` trước khi mở UI dialog — nếu không có `whitelist_ip`, ẩn lựa chọn.
+- Đổi auth **không** ảnh hưởng IP — IP cũ vẫn dùng được. Chỉ user/pass thay đổi.
+- Sau khi đổi sang IP whitelist, **mất kết nối với user/pass cũ ngay lập tức** — đảm bảo cập nhật client phía bạn trước.
+
+## Liên quan
+
+- [Đổi IP](/proxy/change-ip)
+- [Đổi rotate time](/proxy/change-rotate-time)
+- [Capabilities](/concepts/capabilities)

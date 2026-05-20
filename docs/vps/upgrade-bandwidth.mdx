@@ -1,0 +1,77 @@
+---
+title: "Nâng tốc độ mạng VPS"
+description: "Nâng bandwidth speed (Mbps) cho VPS — chỉ VPS Standard"
+---
+
+`POST /api/v2/customer/vps/upgrade-bandwidth`
+
+Nâng cấp tốc độ cổng mạng (Mbps) cho VPS. Khác với [`/vps/upgrade`](/vps/upgrade)
+(nâng CPU/RAM/Disk/IP), endpoint này chỉ thay đổi `bandwidth.speed_mbps`.
+
+<Warning>
+**Chỉ áp dụng cho VPS Standard** — `capabilities.upgrade_bandwidth.can = true`.
+</Warning>
+
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+| `bandwidth` | integer | có | Tốc độ mới (Mbps). Phải nằm trong khoảng cho phép theo plan. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade-bandwidth' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 4567,
+    "bandwidth": 500
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Nâng bandwidth thành công",
+  "code": "ok",
+  "data": {
+    "id": 4567,
+    "bandwidth": {
+      "speed_mbps": 500,
+      "limit_gb_per_month": 5000,
+      "used_gb_this_month": 234.5
+    },
+    "amount_charged": 50000,
+    "balance_after": 270000
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `bandwidth` thiếu hoặc ngoài khoảng cho phép (min/max). |
+| 403 | `forbidden` | VPS không thuộc user. |
+| 422 | `feature_unavailable` | Không phải VPS Standard. |
+| 503 | `internal_error` | Số dư không đủ. |
+| 200 | `request_failed` | Provider từ chối. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Khoảng `bandwidth` cho phép tuỳ plan — đọc từ [`/catalog/fetch-product-options`](/catalog/fetch-product-options) trước.
+- Phí một lần (không định kỳ) — `amount_charged` trừ ngay từ `balance`.
+- Không thể **downgrade** speed qua endpoint này — liên hệ support.
+- Thay đổi áp dụng ngay, không cần reboot.
+
+## Liên quan
+
+- [Network info](/vps/network)
+- [Upgrade CPU/RAM/Disk/IP](/vps/upgrade)
+- [Capabilities](/concepts/capabilities)

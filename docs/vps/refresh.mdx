@@ -1,0 +1,82 @@
+---
+title: "Đồng bộ trạng thái VPS"
+description: "3 endpoint refresh khác nhau cho VPS — sync state với provider"
+---
+
+Tương tự [`/proxy/refresh`](/proxy/refresh), VPS cũng có 3 endpoint refresh:
+
+## 1. Refresh đơn
+
+`POST /api/v2/customer/vps/refresh-order`
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_id` | integer | có | ID đơn cần refresh. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-order' \
+  -H 'Authorization: Bearer 1|...' \
+  -d '{ "order_id": 5001 }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": { "order_id": 5001, "status": "active", "ready_vps": 1 },
+  "meta": {}
+}
+```
+
+---
+
+## 2. Refresh toàn bộ VPS user
+
+`POST /api/v2/customer/vps/refresh-vps-list`
+
+Refresh state cho tất cả VPS của user (nặng — chỉ dùng khi cần thiết).
+
+Không cần body. Bearer token đủ.
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-list' \
+  -H 'Authorization: Bearer 1|...'
+```
+
+---
+
+## 3. Refresh VPS của một đơn
+
+`POST /api/v2/customer/vps/refresh-vps-of-order`
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_id` | integer | có | ID đơn cần refresh VPS. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/refresh-vps-of-order' \
+  -H 'Authorization: Bearer 1|...' \
+  -d '{ "order_id": 5001 }'
+```
+
+## Errors (cả 3)
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `order_id` thiếu/sai. |
+| 403 | `forbidden` | Đơn không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Refresh là **realtime call** tới provider — chậm (1–10s).
+- **Không gọi trong loop**. Đề xuất rate: 1 lần / 60s.
+- Dùng để check provisioning state sau mua VPS, hoặc khi UI hiển thị stale.
+- Polling [`/vps/list`](/vps/list) chu kỳ 60s nhẹ hơn — preferred cho UI auto-update.
+
+## Liên quan
+
+- [Mua VPS](/vps/pay)
+- [Danh sách VPS](/vps/list)

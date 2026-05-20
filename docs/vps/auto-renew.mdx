@@ -1,0 +1,63 @@
+---
+title: "Bật / tắt auto-renew VPS"
+description: "Set auto-renew cho nhiều VPS cùng lúc"
+---
+
+`POST /api/v2/customer/vps/auto-renew-vps-list`
+
+Bật/tắt cơ chế tự động gia hạn cho danh sách VPS. Khi bật, hệ thống tự
+renew 24h trước `expired_at` theo `period` đã chọn lúc mua.
+
+**Áp dụng cho**: VPS có `capabilities.auto_renew.can = true`
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `ids[]` | array of integer | có | ID các VPS. Phải thuộc user. |
+| `is_auto_renewal` | boolean | có | `true` = bật, `false` = tắt. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/auto-renew-vps-list' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "ids": [4567, 4568],
+    "is_auto_renewal": true
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Bật auto-renew cho tất cả VPS thành công",
+  "code": "ok",
+  "data": [
+    { "id": 4567, "auto_extend": true, "main_ipv4": "203.0.113.10" },
+    { "id": 4568, "auto_extend": true, "main_ipv4": "203.0.113.11" }
+  ],
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `ids` rỗng hoặc chứa ID không tồn tại. |
+| 403 | `forbidden` | Có VPS không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Auto-renew chỉ chạy khi `capabilities.auto_renew.can = true`. VPS có plan không hỗ trợ → bỏ qua silent.
+- Nếu `balance` không đủ khi auto-renew chạy → VPS bị mark `expired`. Hệ thống gửi email cảnh báo trước 48h và 24h.
+- Tắt auto-renew **không** huỷ VPS — chỉ ngăn renew tự động.
+
+## Liên quan
+
+- [Gia hạn 1 VPS](/vps/renew)
+- [Capabilities](/concepts/capabilities)

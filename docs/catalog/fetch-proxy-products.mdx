@@ -1,0 +1,143 @@
+---
+title: "Danh sách sản phẩm Proxy"
+description: "Catalog các gói Proxy active, nhóm theo product family, kèm capabilities mặc định"
+---
+
+`GET /api/v2/fetch-proxy-products`
+
+Trả về toàn bộ sản phẩm Proxy đang active trên hệ thống, **nhóm theo
+product family**. Mỗi plan có sẵn `family`, `family_code` và
+`capabilities` mặc định — bạn dùng để render catalog phía UI.
+
+**Áp dụng cho**: Mọi family Proxy
+**Auth**: Không bắt buộc
+**Rate limit**: Không có
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `locale` | enum `en` \| `vi` \| `fr` \| `zh` | không | Ngôn ngữ cho `name`, `description`. Mặc định `en`. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/fetch-proxy-products?locale=vi' \
+  -H 'Accept: application/json'
+```
+
+## Response thành công
+
+### Schema
+
+Top-level `data` là **array of family groups**. Mỗi group:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `family` | string | Tên hiển thị family (vd `"Proxy IPv4 Datacenter"`). |
+| `family_code` | string | Mã family (xem [Product families](/concepts/product-families)). |
+| `plans` | array | Danh sách plan thuộc family này. |
+
+Mỗi plan trong `plans`:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Plan ID, dùng làm `plan_id` khi gọi `pay`. |
+| `name` | string | Tên hiển thị (đã localize). |
+| `plan` | string | Tên kỹ thuật ngắn. |
+| `short_des` | string | Mô tả ngắn. |
+| `description` | string | Mô tả dài (markdown). |
+| `type` | string | `"proxy"`. |
+| `service_type` | string | Phân loại kỹ thuật (`datacenter-ipv4`, `ipv6`, …). |
+| `price` | number | Giá hiển thị (VND). |
+| `price_unit` | string | `"day"`, `"month"`, `"gb"`. |
+| `price_duration` | integer | Số đơn vị tương ứng. |
+| `package_quantity` | integer | Số proxy mỗi gói. |
+| `family` | string | (Trùng family group) |
+| `family_code` | string | (Trùng family group) |
+| `capabilities` | object | Capability mặc định cho family. Xem [Capabilities](/concepts/capabilities). |
+| `options` | object | Options khả dụng (protocol, region, days, …). |
+| `auto_renew_enabled` | boolean | Có hỗ trợ auto-renew không. |
+| `is_bandwidth_plan` | boolean | Là gói bandwidth GB không (`true` cho family `proxy_bandwidth`). |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    {
+      "family": "Proxy IPv4 Datacenter",
+      "family_code": "proxy_ipv4_datacenter",
+      "plans": [
+        {
+          "id": 12,
+          "name": "Proxy IPv4 Static — 30 ngày",
+          "plan": "Static 30d",
+          "short_des": "Datacenter IPv4 — đa region",
+          "description": "Gói proxy IPv4 datacenter, 30 ngày sử dụng...",
+          "type": "proxy",
+          "service_type": "datacenter-ipv4",
+          "price": 50000,
+          "price_unit": "day",
+          "price_duration": 30,
+          "package_quantity": 1,
+          "family": "Proxy IPv4 Datacenter",
+          "family_code": "proxy_ipv4_datacenter",
+          "capabilities": {
+            "change_ip":          { "can": true, "cost": 0, "reason": null },
+            "change_auth":        { "can": true, "auth_types": ["user_pass"], "reason": null },
+            "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+            "renew":              { "can": true, "min_days": 3, "reason": null },
+            "auto_renew":         { "can": true, "reason": null },
+            "export":             { "can": true, "reason": null },
+            "bandwidth_package":  { "is_bandwidth": false },
+            "public_access_key":  { "can": true, "endpoints": ["current","new"], "reason": null }
+          },
+          "options": {
+            "protocol": { "http": "HTTP", "socks5": "SOCKS5" },
+            "days": { "min": 7, "step": 1 }
+          },
+          "auto_renew_enabled": true,
+          "is_bandwidth_plan": false
+        }
+      ]
+    },
+    {
+      "family": "Proxy Bandwidth (GB)",
+      "family_code": "proxy_bandwidth",
+      "plans": [/* ... */]
+    }
+  ],
+  "meta": {
+    "locale": "en"
+  }
+}
+```
+
+## Errors
+
+Endpoint không có lỗi business — trường hợp xấu nhất là `data: []` (không có sản phẩm active).
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 500 | `internal_error` | Lỗi server. Retry sau. |
+
+## Business notes
+
+- Chỉ trả về sản phẩm `status = 'active'`.
+- Plan từ provider đã shutdown / loại trừ **không xuất hiện**.
+- `capabilities` ở đây là **default theo family** — record proxy thực
+  tế (`customer/proxy/list`) có thể có capability khác do runtime override.
+- Frontend nên cache response này 5–15 phút.
+
+## Liên quan
+
+- [Lấy options chi tiết một plan](/catalog/fetch-product-options)
+- [Mua proxy](/proxy/pay)
+- [Product families](/concepts/product-families)
+- [Capabilities](/concepts/capabilities)

@@ -1,0 +1,168 @@
+---
+title: "Public Access Key (cho end-user)"
+description: "Endpoint không cần Bearer — dành cho khách hàng cuối của reseller dùng proxy xoay"
+---
+
+Khác với mọi endpoint khác trong tài liệu này (cần Bearer token của reseller),
+hai endpoint dưới đây dùng **API key gắn trong URL**, không cần header
+`Authorization`. Mục đích: cho phép **end-user** của reseller dùng proxy
+xoay trực tiếp mà không lộ token tài khoản reseller.
+
+**Áp dụng cho**: Proxy có `capabilities.public_access_key.can = true`
+**Auth**: Không (key trong URL)
+**Rate limit**: 60 req/phút cho `current`, 20 req/phút cho `new` (per IP)
+
+## Lấy API key
+
+API key cho từng proxy / order có sẵn trong response `/customer/proxy/list`
+ở field `public_api_url` (URL đầy đủ) — bạn share URL này cho end-user.
+
+Khi user cuối gọi URL, hệ thống trả về thông tin proxy hiện tại (hoặc
+yêu cầu IP mới nếu dùng endpoint `new`).
+
+<Info>
+**Reseller** không cần generate key — hệ thống tự tạo. Bạn chỉ cần đọc URL
+từ catalog/list và đưa cho khách.
+</Info>
+
+---
+
+## 1. Lấy proxy hiện tại
+
+`GET /api/v2/proxy-access/{api_key}/current`
+
+Trả về thông tin **proxy đang hoạt động** (IP, port, auth) cho key này.
+
+### Path parameters
+
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `api_key` | string | API key public từ portal/list response. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/proxy-access/abc123xyz/current'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "public_ip": "203.0.113.45",
+    "port": 8080,
+    "username": "u_AbC123",
+    "password": "p_XyZ789",
+    "protocol": "http",
+    "expired_at": "2026-06-18T00:00:00Z",
+    "scope": "proxy"
+  },
+  "meta": {}
+}
+```
+
+Cho **order bundle key** (1 key đại diện nhiều proxy của 1 đơn):
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": {
+    "scope": "order_bundle",
+    "proxies": [
+      { "public_ip": "...", "port": 8080, "username": "...", "password": "..." }
+    ],
+    "expired_at": "2026-06-18T00:00:00Z"
+  }
+}
+```
+
+---
+
+## 2. Yêu cầu IP mới
+
+`GET /api/v2/proxy-access/{api_key}/new`
+
+Đổi IP cho proxy (chỉ áp dụng nếu proxy hỗ trợ `change_ip` miễn phí —
+xem `capabilities.change_ip.cost`). Sau khi đổi, trả về thông tin proxy mới.
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/proxy-access/abc123xyz/new'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đã cấp IP mới",
+  "code": "ok",
+  "data": {
+    "public_ip": "203.0.113.88",
+    "previous_ip": "203.0.113.45",
+    "port": 8080,
+    "username": "u_AbC123",
+    "password": "p_XyZ789",
+    "next_change_ip_time": "2026-05-18T11:45:00Z"
+  },
+  "meta": {}
+}
+```
+
+---
+
+## Errors (cả 2 endpoint)
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 404 | `not_found` | `api_key` không tồn tại / đã bị xoá. |
+| 422 | `feature_unavailable` | `new`: proxy không hỗ trợ `change_ip` miễn phí. |
+| 422 | `feature_unavailable` | `new`: dùng order_bundle key (chỉ proxy xoay mới hỗ trợ `new`). |
+| 429 | `rate_limited` | Vượt 60/min hoặc 20/min. Có header `Retry-After`. |
+| 503 | `internal_error` | Proxy tạm thời unavailable. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Best practice cho end-user client
+
+```js
+async function getCurrentProxy(apiKey) {
+  const res = await fetch(`https://cloud-cheap.com/api/v2/proxy-access/${apiKey}/current`);
+  const body = await res.json();
+  if (!body.success) throw new Error(body.message);
+  return body.data;
+}
+
+async function rotateAndGetNew(apiKey) {
+  const res = await fetch(`https://cloud-cheap.com/api/v2/proxy-access/${apiKey}/new`);
+  const body = await res.json();
+  if (!body.success) {
+    if (body.code === 'rate_limited') {
+      const wait = res.headers.get('Retry-After') || 30;
+      await new Promise(r => setTimeout(r, wait * 1000));
+      return rotateAndGetNew(apiKey);
+    }
+    throw new Error(body.message);
+  }
+  return body.data;
+}
+```
+
+## Business notes
+
+- Endpoint **public** — bất kỳ ai có URL đều dùng được. Không lộ key qua log/screenshot.
+- Response set `Cache-Control: no-store, no-cache, must-revalidate` để client luôn lấy data realtime.
+- `new` endpoint thường được dùng trong loop — tôn trọng rate 20/min.
+- Order bundle key chỉ dùng được với `/current`. `/new` sẽ trả `feature_unavailable`.
+- Endpoint **không** cập nhật vào activity log (tránh log spam).
+
+## Liên quan
+
+- [Danh sách proxy](/proxy/list)
+- [Đổi IP qua Bearer](/proxy/change-ip)
+- [Capabilities](/concepts/capabilities)

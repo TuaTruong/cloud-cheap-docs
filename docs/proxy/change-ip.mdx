@@ -1,0 +1,92 @@
+---
+title: "Đổi IP proxy"
+description: "Yêu cầu provider cấp IP mới cho proxy — có thể miễn phí hoặc tính phí"
+---
+
+`POST /api/v2/customer/proxy/change-proxy-ip`
+
+Yêu cầu đổi IP cho một proxy đang sử dụng. Có thể **miễn phí** hoặc **mất phí**
+tuỳ family + plan + state runtime — đọc `capabilities.change_ip` để biết
+chi phí trước khi gọi.
+
+**Áp dụng cho**: Proxy có `capabilities.change_ip.can = true` — **không**
+áp dụng cho Proxy IPv6, Proxy Residential Static, Proxy Bandwidth
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID proxy. |
+| `order_number` | string | có | Mã đơn chứa proxy. Phải thuộc user. |
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/change-proxy-ip' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "proxy_id": 5678, "order_number": "ORD-PROXY-001" }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đổi IP thành công",
+  "code": "ok",
+  "data": {
+    "id": 5678,
+    "public_ip": "203.0.113.88",
+    "previous_ip": "203.0.113.45",
+    "cost": 20000,
+    "balance_after": 280000,
+    "next_change_ip_time": "2026-05-18T11:45:00Z"
+  },
+  "meta": {}
+}
+```
+
+| Field | Mô tả |
+|---|---|
+| `previous_ip` | IP cũ trước khi đổi. |
+| `cost` | Số tiền đã trừ (`0` nếu miễn phí). |
+| `next_change_ip_time` | Thời điểm sớm nhất có thể đổi lần kế tiếp (giới hạn rate). |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Param sai. |
+| 403 | `forbidden` | Proxy không thuộc user. |
+| 422 | `feature_unavailable` | Proxy không cho phép đổi IP (`capabilities.change_ip.can = false`). |
+| 503 | `internal_error` | Số dư không đủ (cho proxy paid change-ip). |
+| 500 | `internal_error` | Lỗi server. |
+| 200 | `request_failed` | Provider từ chối (return success=false). Đọc `message`. |
+
+### Ví dụ — số dư không đủ
+
+```json
+{
+  "success": false,
+  "message": "Số dư không đủ để đổi IP",
+  "code": "internal_error",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Đọc `capabilities.change_ip.cost` để biết phí trước. `0` = miễn phí; số dương = phí trừ ngay khi gọi.
+- Một số plan giới hạn **rate đổi IP** (vd 1 lần / 5 phút). Vi phạm → `feature_unavailable` với `reason: runtime_disabled`.
+- Sau khi đổi, IP mới có thể chưa propagate ngay — đợi 5–10s rồi test.
+- Hành động được ghi vào [activity log](/histories/activities) + payment log (nếu có phí).
+
+## Liên quan
+
+- [Capabilities](/concepts/capabilities)
+- [Đổi auth](/proxy/change-auth)
+- [Đổi rotate time](/proxy/change-rotate-time)

@@ -1,0 +1,80 @@
+---
+title: "Thông tin network VPS"
+description: "Lấy chi tiết network (IPv4/IPv6, bandwidth, statistics) — chỉ VPS Standard"
+---
+
+`POST /api/v2/customer/vps/network`
+
+Trả về thông tin chi tiết về network của VPS: IPv4/IPv6 chính + phụ,
+bandwidth allocated, bandwidth used.
+
+<Warning>
+**Chỉ áp dụng cho VPS Standard** — `capabilities.network.can = true`.
+</Warning>
+
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/network' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567 }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": {
+    "main_ipv4": "203.0.113.10",
+    "ipv4_addresses": ["203.0.113.10", "203.0.113.11"],
+    "ipv6_addresses": ["2001:db8::1"],
+    "ipv6_subnets": ["2001:db8::/64"],
+    "bandwidth": {
+      "speed_mbps": 100,
+      "limit_gb_per_month": 5000,
+      "used_gb_this_month": 234.5,
+      "reset_at": "2026-06-01T00:00:00Z"
+    },
+    "gateway": "203.0.113.1",
+    "netmask": "255.255.255.0"
+  },
+  "meta": {}
+}
+```
+
+| Field | Mô tả |
+|---|---|
+| `bandwidth.speed_mbps` | Tốc độ cổng mạng (Mbps). |
+| `bandwidth.limit_gb_per_month` | Quota traffic hàng tháng. `0` = unlimited. |
+| `bandwidth.used_gb_this_month` | Đã sử dụng trong tháng hiện tại. |
+| `bandwidth.reset_at` | Thời điểm reset quota. |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `id` thiếu. |
+| 403 | `forbidden` | VPS không thuộc user. |
+| 422 | `feature_unavailable` | Không phải VPS Standard. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Để nâng tốc độ network, dùng [`/vps/upgrade-bandwidth`](/vps/upgrade-bandwidth).
+- `used_gb_this_month` cập nhật theo realtime (delay 5–15 phút).
+- Vượt quota → thường bị throttle xuống tốc độ thấp hơn (không cắt mạng).
+
+## Liên quan
+
+- [Upgrade bandwidth](/vps/upgrade-bandwidth)
+- [Console](/vps/console)
+- [Capabilities](/concepts/capabilities)

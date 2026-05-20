@@ -1,0 +1,62 @@
+---
+title: "Gia hạn VPS"
+description: "Gia hạn một VPS theo chu kỳ — trừ tiền từ balance"
+---
+
+`POST /api/v2/customer/vps/renew-vps`
+
+Gia hạn 1 VPS thêm 1 chu kỳ (`period`). Tiền trừ từ `balance` ngay khi
+thành công.
+
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+| `period` | string | có | Chu kỳ gia hạn (`monthly`, `quarterly`, `yearly`). |
+| `sub_total` | number | không | Giá user thấy (server verify). |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/renew-vps' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "period": "monthly" }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Gia hạn VPS thành công",
+  "code": "ok",
+  "data": {
+    "id": 4567,
+    "expired_at": "2026-07-18T00:00:00Z",
+    "amount_charged": 140000,
+    "balance_after": 360000
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `id` không thuộc user, hoặc `period` sai. |
+| 503 | `internal_error` | Số dư không đủ. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Giá renew = giá plan × thời gian theo `period`. Coupon **không** áp dụng cho renew.
+- `expired_at` mới = `max(expired_at hiện tại, now) + period`.
+- Auto-renew (nếu bật) tự động làm việc này 24h trước `expired_at`.
+
+## Liên quan
+
+- [Auto-renew nhiều VPS](/vps/auto-renew)
+- [Capabilities](/concepts/capabilities)

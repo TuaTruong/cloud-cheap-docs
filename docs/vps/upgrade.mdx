@@ -1,0 +1,99 @@
+---
+title: "Nâng cấp VPS (CPU/RAM/Disk/IP)"
+description: "Thêm tài nguyên cho VPS — trả phí addon"
+---
+
+`POST /api/v2/customer/vps/upgrade`
+
+Nâng cấp CPU, RAM, Disk, hoặc số IP cho VPS. Mỗi addon tính phí riêng
+theo `capabilities.upgrade.fixed_pricing` của family.
+
+**Áp dụng cho**: VPS có `capabilities.upgrade.can = true`
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID. |
+| `upgrade_cpu` | number ≥ 0 | có (1 trong 4) | Số CPU core thêm. |
+| `upgrade_ram` | number ≥ 0 | có (1 trong 4) | RAM thêm (GB). |
+| `upgrade_disk` | number ≥ 0 | có (1 trong 4) | Disk thêm (GB). |
+| `upgrade_ip` | number ≥ 0 | có (1 trong 4) | Số IP thêm. |
+| `sub_total` | number | không | Giá user thấy (server verify). |
+
+Phải có **ít nhất một** trong `upgrade_cpu`, `upgrade_ram`, `upgrade_disk`, `upgrade_ip`.
+
+<Warning>
+Với **VPS Pro** (`capabilities.upgrade.fixed_pricing = true`,
+`disk_step_gb = 10`): `upgrade_disk` phải là **bội số của 10**. Với
+family khác: step = 1.
+</Warning>
+
+### Ví dụ — thêm 2 CPU + 4 GB RAM
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 4567,
+    "upgrade_cpu": 2,
+    "upgrade_ram": 4
+  }'
+```
+
+### Ví dụ — thêm 20 GB disk
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "upgrade_disk": 20 }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đang nâng cấp VPS",
+  "code": "ok",
+  "data": {
+    "id": 4567,
+    "config": {
+      "cpu": 4,
+      "ram": 8,
+      "disk": 80,
+      "bandwidth_mbps": 100
+    },
+    "amount_charged": 70000,
+    "balance_after": 290000,
+    "action_status": "upgrading"
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu cả 4 field upgrade. |
+| 422 | `validation_failed` | `upgrade_disk` không phải bội số `disk_step_gb`. |
+| 503 | `internal_error` | Số dư không đủ. |
+| 200 | `request_failed` | Provider từ chối. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Giá addon = `addon_per_unit × quantity` (cho family per-unit pricing) hoặc lookup table (cho family `fixed_pricing`).
+- Upgrade **không reboot** VPS (đa số trường hợp). Một số provider yêu cầu reboot — `action_status` sẽ là `upgrading_rebooting`.
+- Không thể **downgrade** qua endpoint này. Liên hệ support nếu cần.
+- Disk thêm chỉ allocate, **không expand filesystem** tự động — bạn cần resize2fs / partprobe phía VPS.
+
+## Liên quan
+
+- [Capabilities](/concepts/capabilities)
+- [Catalog options](/catalog/fetch-product-options) — biết giá addon trước upgrade.
+- [Power control](/vps/power-control)

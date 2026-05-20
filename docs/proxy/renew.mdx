@@ -1,0 +1,91 @@
+---
+title: "Gia hạn proxy"
+description: "Gia hạn một proxy theo số ngày — không áp dụng cho gói bandwidth"
+---
+
+`POST /api/v2/customer/proxy/renew-proxy`
+
+Gia hạn một proxy cụ thể, kéo dài `expired_at` thêm `days` ngày.
+
+**Áp dụng cho**: Proxy có `capabilities.renew.can = true` — **không** áp dụng cho gói bandwidth (`bandwidth_package.is_bandwidth = true`)
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID proxy cần renew. |
+| `order_number` | string | có | Mã đơn chứa proxy. Phải thuộc user. |
+| `days` | integer ≥ 1 | không | Số ngày gia hạn. Mặc định theo `period` của plan. |
+
+<Info>
+Trước khi gọi, đọc `capabilities.renew` của proxy:
+- `can` = `false` → ẩn nút renew.
+- `min_days` → số ngày tối thiểu cho phép gia hạn.
+</Info>
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/renew-proxy' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 5678,
+    "order_number": "ORD-PROXY-001",
+    "days": 30
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Gia hạn thành công",
+  "code": "ok",
+  "data": {
+    "id": 5678,
+    "public_ip": "203.0.113.45",
+    "expired_at": "2026-07-17T10:30:00Z",
+    "amount_charged": 50000,
+    "balance_after": 250000
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `proxy_id` hoặc `order_number` sai. |
+| 403 | `forbidden` | Proxy không thuộc user, hoặc proxy thuộc gói bandwidth, hoặc proxy không có `auto_renew_enabled`. |
+| 503 | `internal_error` | Số dư không đủ. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — proxy không cho phép renew
+
+```json
+{
+  "success": false,
+  "message": "Proxy 203.0.113.45 không cho phép gia hạn",
+  "code": "forbidden",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Giá renew = `days × giá theo period` của plan ban đầu. Coupon **không** áp dụng cho renew.
+- Số tiền trừ từ `balance` ngay khi thành công.
+- `expired_at` mới = `max(expired_at hiện tại, now) + days`.
+- Proxy gói bandwidth không có khái niệm renew — bạn cần [`generate-bandwidth-proxies`](/proxy/bandwidth/generate-proxies) lại sau khi mua gói mới.
+
+## Liên quan
+
+- [Auto-renew nhiều proxy](/proxy/auto-renew)
+- [Capabilities](/concepts/capabilities)
+- [Danh sách proxy](/proxy/list)

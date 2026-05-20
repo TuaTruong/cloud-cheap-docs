@@ -1,0 +1,82 @@
+---
+title: "Chuyển đơn cho user khác"
+description: "Chuyển nhiều đơn proxy sang một tài khoản khác (cùng hệ thống) qua email"
+---
+
+`POST /api/v2/customer/proxy/transfer-to-another-user`
+
+Chuyển quyền sở hữu một hoặc nhiều đơn hàng proxy cho user khác. Sau khi
+transfer, đơn không còn thuộc bạn — không thể renew, change-ip, … từ
+phía bạn.
+
+**Áp dụng cho**: Mọi family Proxy
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_ids[]` | array of integer | có | ID các đơn cần chuyển. Phải thuộc user hiện tại. |
+| `email` | string (email) | có | Email user nhận. Phải tồn tại trong hệ thống. |
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/transfer-to-another-user' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "order_ids": [1234, 1235],
+    "email": "newowner@example.com"
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Chuyển đơn thành công",
+  "code": "ok",
+  "data": {
+    "transferred": [1234, 1235],
+    "new_owner_email": "newowner@example.com"
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `email` không tồn tại trong hệ thống, hoặc `order_ids` rỗng / chứa ID không thuộc user. |
+| 422 | `validation_failed` | Đơn ở trạng thái không cho phép chuyển (vd đang renewal lock). |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — email không tồn tại
+
+```json
+{
+  "success": false,
+  "message": "Người dùng với email newowner@example.com không tồn tại",
+  "code": "validation_failed",
+  "errors": {
+    "email": ["The selected email is invalid."]
+  },
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Hành động **không thể hoàn tác**. Cần xác nhận phía UI trước khi gọi.
+- Sau transfer, hệ thống gửi email thông báo cho cả user gửi và user nhận.
+- Đơn vẫn giữ nguyên `order_number`, `expired_at`, lịch sử proxy — chỉ đổi `user_id`.
+- Hành động được ghi vào activity log của cả hai user.
+
+## Liên quan
+
+- [Danh sách đơn](/proxy/orders)
+- [Huỷ đơn](/proxy/cancel-order)

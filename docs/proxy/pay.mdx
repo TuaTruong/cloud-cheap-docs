@@ -1,0 +1,131 @@
+---
+title: "Mua proxy"
+description: "Tạo đơn hàng và xuất proxy mới — hỗ trợ cả proxy theo period và bandwidth GB"
+---
+
+`POST /api/v2/customer/proxy/pay`
+
+Tạo đơn hàng proxy mới. Số tiền sẽ được trừ từ `balance` của user. Endpoint
+hỗ trợ cả mua theo **period** (ngày/tháng) và **bandwidth GB**.
+
+**Áp dụng cho**: Mọi family Proxy
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `plan_id` | integer | có | ID plan từ [`fetch-proxy-products`](/catalog/fetch-proxy-products). |
+| `quantity` | integer ≥ 1 | có (non-bandwidth) | Số proxy muốn mua. |
+| `bandwidth_gb` | integer ≥ 1 | có (bandwidth) | Dung lượng GB (chỉ cho `proxy_bandwidth`). |
+| `protocol` | string | không | `http` / `socks5` / `vmess` / `vless` / `shadowsocks` / `trojan` / `wireguard`. |
+| `location` | string | không | Mã region (lấy từ catalog options). |
+| `isp` | string | không | ISP cho residential. |
+| `period` | string | không | Đơn vị thời gian (vd `month`). |
+| `days` | integer ≥ 1 | không | Số ngày custom. |
+| `custom_days` | integer ≥ 1 | không | Alias cho `days`. |
+| `rotate_time` | number ≥ 1 | không | Số phút giữa lần xoay IP. |
+| `package_quantity` | number ≥ 1 | không | Số IP mỗi gói (1 cho proxy thường). |
+| `price` | number | không | Giá user thấy (validation server-side). |
+| `total` | number | không | Tổng thanh toán user thấy. |
+| `auto_renewal` | boolean | không | Bật auto-renew. **Sẽ bị bỏ qua nếu là gói bandwidth**. |
+| `coupon_code` | string | không | Mã coupon. |
+| `proxies[]` | array | không | Khi mua proxy đã chọn sẵn (mỗi phần tử có `id`, `ip_public`, `protocol`, `location`). |
+
+<Warning>
+Field `ips[]` chỉ áp dụng cho một số provider nội bộ (đã loại trừ).
+Reseller dùng v2 **không cần** truyền field này. Nếu truyền, server trả 422.
+</Warning>
+
+### Ví dụ — Mua proxy theo period
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/pay' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "plan_id": 12,
+    "quantity": 5,
+    "protocol": "http",
+    "location": "US",
+    "days": 30,
+    "auto_renewal": false,
+    "coupon_code": "WELCOME50"
+  }'
+```
+
+### Ví dụ — Mua gói bandwidth GB
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/pay' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "plan_id": 28,
+    "bandwidth_gb": 100
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Tạo đơn thành công",
+  "code": "ok",
+  "data": {
+    "order_id": 1234,
+    "order_number": "ORD-PROXY-001",
+    "status": "processing",
+    "quantity": 5,
+    "amount": 200000,
+    "balance_after": 300000
+  },
+  "meta": {}
+}
+```
+
+<Info>
+Sau khi `pay` thành công, đơn có thể ở trạng thái `processing` cho đến
+khi provider phía sau cấp xong proxy. Gọi [`refresh-order`](/proxy/refresh)
+hoặc poll [`/proxy/list?order_id=...`](/proxy/list) để biết kết quả.
+</Info>
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu/sai param. Xem `errors`. |
+| 422 | `validation_failed` | `plan_id` không active. |
+| 422 | `validation_failed` | `auto_renewal=true` mà plan không hỗ trợ. |
+| 422 | `validation_failed` | `bandwidth_gb` thiếu khi plan là bandwidth. |
+| 503 | `internal_error` | `balance` không đủ. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — số dư không đủ
+
+```json
+{
+  "success": false,
+  "message": "Số dư không đủ",
+  "code": "internal_error",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- Số tiền trừ = `quantity × giá theo period` (hoặc `bandwidth_gb × đơn giá GB`) – `discount` (nếu có coupon).
+- Nếu `auto_renewal=true`, hệ thống sẽ tự gia hạn theo `period` của plan khi proxy đến hạn — cho đến khi `balance` không đủ.
+- Mua gói bandwidth → trả về 1 record proxy đại diện gói GB. Dùng [`generate-bandwidth-proxies`](/proxy/bandwidth/generate-proxies) để sinh proxy thực tế từ gói.
+
+## Liên quan
+
+- [Catalog Proxy](/catalog/fetch-proxy-products)
+- [Lấy options chi tiết](/catalog/fetch-product-options)
+- [Coupon](/catalog/fetch-coupon)
+- [Generate bandwidth proxies](/proxy/bandwidth/generate-proxies)

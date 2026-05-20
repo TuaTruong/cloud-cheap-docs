@@ -1,0 +1,183 @@
+---
+title: "Endpoint anatomy (template)"
+description: "Bản mẫu chuẩn cho mọi trang endpoint trong tài liệu này"
+---
+
+<Info>
+Trang này là **tham khảo nội bộ cho người viết docs** — không phải endpoint
+thật. Bạn (reseller) có thể bỏ qua. Mọi trang endpoint khác đều theo
+template này.
+</Info>
+
+## Anatomy của một endpoint section
+
+Mỗi trang endpoint tuân thủ cấu trúc 8 phần dưới đây, theo đúng thứ tự.
+Mục tiêu: đọc hết một section là tích hợp được, không cần nhảy chéo trang.
+
+### Phần 1 — Tiêu đề & mô tả ngắn
+
+```markdown
+---
+title: "Sinh danh sách proxy từ gói bandwidth"
+description: "Tạo proxy theo filter geo/sticky cho gói GB đã mua"
+---
+```
+
+Title: action verb-first, tiếng Việt, ngắn (< 80 ký tự).
+Description: 1 câu mô tả mục đích — hiện ở SEO + sidebar.
+
+### Phần 2 — HTTP method + path
+
+```markdown
+`POST /api/v2/customer/proxy/generate-bandwidth-proxies`
+```
+
+Inline code, prefix `/api/v2/` **luôn** xuất hiện.
+
+### Phần 3 — Áp dụng cho & meta
+
+```markdown
+**Áp dụng cho**: Proxy Bandwidth (GB) — `proxy_bandwidth`
+**Auth**: Bearer token (xem [Authentication](/authentication))
+**Rate limit**: Không có (mặc định)
+```
+
+3 dòng cố định:
+- **Áp dụng cho**: family hoặc capability flag yêu cầu.
+- **Auth**: kiểu xác thực + link sang trang auth.
+- **Rate limit**: số lượng req cho phép, hoặc "Không có" nếu mặc định.
+
+### Phần 4 — Request
+
+#### Headers
+
+```markdown
+| Header | Bắt buộc | Giá trị mẫu |
+|---|---|---|
+| `Authorization` | có | `Bearer 1\|abc...` |
+| `Content-Type` | có | `application/json` |
+| `Accept` | nên có | `application/json` |
+```
+
+#### Body parameters
+
+```markdown
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID của gói proxy bandwidth. |
+| `order_number` | string | có | Mã đơn hàng. |
+| `country_code` | string | không | Lọc theo quốc gia (ISO-2). |
+| `proxy_type` | enum `rotating`\|`sticky` | không | Mặc định `rotating`. |
+| `proxy_sticky_times` | integer (1–120) | có nếu `proxy_type=sticky` | Số phút giữ session. |
+```
+
+- Cột "Kiểu" dùng PHP/JS type. Enum thì list values bằng `\|`.
+- Cột "Bắt buộc" chỉ điền `có` / `không` / `có nếu ...`.
+- Mọi field default value ghi trong "Mô tả".
+
+#### Ví dụ request
+
+```bash cURL
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/generate-bandwidth-proxies' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "proxy_id": 123, "order_number": "ORD-001", "proxy_type": "sticky", "proxy_sticky_times": 10 }'
+```
+
+Cung cấp tối thiểu **cURL + PHP**, có thể thêm Node nếu phù hợp.
+
+### Phần 5 — Response thành công
+
+#### Schema
+
+```markdown
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `data.proxies` | array | Danh sách proxy đã sinh. |
+| `data.proxies[].public_ip` | string | IP công khai. |
+| `data.proxies[].port` | integer | Cổng. |
+| `data.proxies[].username` | string | User auth. |
+| `data.proxies[].password` | string | Mật khẩu auth. |
+```
+
+#### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "proxies": [
+      { "public_ip": "1.2.3.4", "port": 8080, "username": "u123", "password": "p123" }
+    ]
+  },
+  "meta": {}
+}
+```
+
+### Phần 6 — Errors
+
+```markdown
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Field thiếu/sai. Xem `errors` chi tiết. |
+| 403 | `forbidden` | Đơn không thuộc về user. |
+| 422 | `feature_unavailable` | Không phải gói bandwidth (`bandwidth_package.is_bandwidth = false`). |
+| 503 | `internal_error` | Provider gặp lỗi. Thử lại sau. |
+```
+
+Mỗi row: HTTP + code + 1 câu khi nào.
+
+### Phần 7 — Business notes
+
+```markdown
+- Mỗi lần gọi sinh **tối đa 1000 proxy**.
+- Filter `country_code` phải có trong list trả về bởi `bandwidth-config-options`.
+- Proxy sticky giữ session theo `proxy_sticky_times` phút, sau đó IP đổi.
+```
+
+Bullet list — chỉ ghi nếu có nghiệp vụ đặc biệt.
+
+### Phần 8 — Liên quan
+
+```markdown
+- [Xem cấu hình bandwidth](/proxy/bandwidth/config-options)
+- [Cập nhật cấu hình](/proxy/bandwidth/update-config)
+- [Capability flag](/concepts/capabilities)
+```
+
+Link cross-reference đến trang liên quan.
+
+## Checklist trước khi merge
+
+<Steps>
+  <Step title="Title verb-first, tiếng Việt">
+    "Sinh danh sách proxy" (✓) — không "Generate proxies" (✗).
+  </Step>
+  <Step title="Path đầy đủ /api/v2/">
+    Không viết tắt path.
+  </Step>
+  <Step title="Mọi tham số có trong bảng">
+    Không bỏ field tuỳ chọn. Liệt kê hết.
+  </Step>
+  <Step title="Ví dụ request + response đầy đủ">
+    Tối thiểu cURL. Response có shape envelope chuẩn.
+  </Step>
+  <Step title="Errors liệt kê đầy đủ">
+    Mọi error code có thể xảy ra, kèm khi nào.
+  </Step>
+  <Step title="Không lộ tên provider nội bộ">
+    Không ghi tên brand backend (xem internal mapping ở `1.5.2.bis` của
+    main plan). Chỉ dùng tên family công khai trong nội dung public.
+  </Step>
+  <Step title="Link cross-ref hoạt động">
+    Mọi `/path` trong markdown phải resolve về 1 trang thật.
+  </Step>
+</Steps>
+
+## Trang mẫu hoàn chỉnh
+
+Xem [Sinh danh sách proxy từ gói bandwidth](/proxy/bandwidth/generate-proxies)
+— trang này được viết theo đúng template trên, là tham chiếu chuẩn cho mọi
+endpoint khác.

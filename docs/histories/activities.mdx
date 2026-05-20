@@ -1,0 +1,120 @@
+---
+title: "Lịch sử hoạt động"
+description: "Audit log mọi hành động user đã thực hiện (mua, đổi IP, renew, …)"
+---
+
+`GET /api/v2/customer/histories/activities`
+
+Trả về **audit log** của user — mọi hành động đã thực hiện trên hệ thống:
+mua proxy/VPS, đổi IP, đổi auth, renew, transfer, đăng nhập, … kèm IP
+address + user agent.
+
+**Áp dụng cho**: User đã đăng nhập
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+### Query parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `page` | integer | không | Trang. Mặc định `1`. |
+| `per_page` | integer (1–100) | không | Số bản ghi mỗi trang. Mặc định `20`. |
+| `keyword` | string | không | Tìm theo `order_number`, `plan`, `email`, `vps_ip`, `proxy_ip`. |
+| `date` | string `YYYY-MM-DD` | không | Lọc theo ngày tạo. |
+| `sort[]` | array | không | Tabulator-style sort. |
+
+### Ví dụ
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/histories/activities?keyword=ORD-PROXY-001' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Accept: application/json'
+```
+
+## Response thành công
+
+### Schema
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Activity ID. |
+| `action_key` | string | Khoá i18n của hành động (vd `"activity_log.buy_proxy"`). |
+| `note` | string | Mô tả đã localize. |
+| `ip_address` | string | IP của user khi thực hiện. |
+| `user_agent` | string | User agent browser/app. |
+| `related_type` | string \| null | Loại object: `"proxy"`, `"proxy_order"`, `"vps"`, `"vps_order"`, `"bank_transaction"`. |
+| `subject_id` | integer \| null | ID object liên quan. |
+| `created_at` | ISO datetime | Thời điểm. |
+
+`meta.pagination` giống [Payments](/histories/payments).
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    {
+      "id": 9012,
+      "action_key": "activity_log.buy_proxy",
+      "note": "Mua proxy: gói Static 30d, số lượng 5",
+      "ip_address": "203.0.113.42",
+      "user_agent": "Mozilla/5.0 ...",
+      "related_type": "proxy_order",
+      "subject_id": 1234,
+      "created_at": "2026-05-18T10:30:00Z"
+    },
+    {
+      "id": 9013,
+      "action_key": "activity_log.change_proxy_ip",
+      "note": "Đổi IP cho proxy 203.0.113.45",
+      "ip_address": "203.0.113.42",
+      "user_agent": "Mozilla/5.0 ...",
+      "related_type": "proxy",
+      "subject_id": 5678,
+      "created_at": "2026-05-18T11:15:00Z"
+    },
+    {
+      "id": 9014,
+      "action_key": "activity_log.export_proxies",
+      "note": "Export 5 proxy, định dạng: standard",
+      "ip_address": "203.0.113.42",
+      "user_agent": "PostmanRuntime/7.x",
+      "related_type": null,
+      "subject_id": null,
+      "created_at": "2026-05-18T11:20:00Z"
+    }
+  ],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 354,
+      "last_page": 18
+    }
+  }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token sai. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Endpoint dành cho **audit trail** — không thể xoá hoặc sửa record.
+- `note` được render với placeholders trong `action_params` (vd `:plan`, `:ip`). Nếu cần raw, dùng v1.
+- `keyword` filter dùng `LOWER(JSON_EXTRACT(...))` cho field trong `action_params` — hỗ trợ tìm theo bất kỳ field nào trong note.
+- Trường hợp dùng phổ biến: phía reseller portal hiển thị tab "Lịch sử" cho khách hàng cuối.
+
+## Liên quan
+
+- [Lịch sử thanh toán](/histories/payments)
+- [Profile](/account/profile)

@@ -1,0 +1,85 @@
+---
+title: "Danh sách đơn VPS"
+description: "Liệt kê các đơn hàng VPS theo trạng thái + filter search"
+---
+
+`GET /api/v2/customer/vps/orders`
+
+Danh sách đơn VPS đã mua. Mỗi đơn có thể chứa 1 hoặc nhiều VPS (`quantity`).
+
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `page` | integer | không | Trang. Mặc định `1`. |
+| `per_page` | integer | không | Số đơn mỗi trang. Mặc định `10`. |
+| `search` | string | không | Tìm theo `order_number`. |
+| `status` | string | không | Lọc theo `user_status`. |
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/vps/orders' \
+  -H 'Authorization: Bearer 1|...'
+```
+
+## Response thành công
+
+Mỗi order:
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | Order ID. |
+| `order_number` | string | Mã đơn. |
+| `family` / `family_code` | string | Family VPS trong đơn. |
+| `quantity` | integer | Số VPS trong đơn. |
+| `period` | string | Chu kỳ thanh toán. |
+| `price` | number | Tổng tiền đơn (VND). |
+| `user_status` | string | `pending`, `active`, `expired`, `cancelled`. |
+| `user_notes` | string \| null | Ghi chú của user. |
+| `paid_at` | ISO datetime \| null | Thời điểm thanh toán. |
+| `expired_at` | ISO datetime \| null | Hạn đơn. |
+| `created_at` | ISO datetime | Tạo đơn. |
+| `auto_extend` | boolean | Auto-renew? |
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": [
+    {
+      "id": 5001,
+      "order_number": "ORD-VPS-001",
+      "family": "VPS Standard",
+      "family_code": "vps_standard",
+      "quantity": 1,
+      "period": "monthly",
+      "price": 140000,
+      "user_status": "active",
+      "paid_at": "2026-05-18T10:30:00Z",
+      "expired_at": "2026-06-18T10:30:00Z",
+      "created_at": "2026-05-18T10:25:00Z",
+      "auto_extend": true
+    }
+  ],
+  "meta": { "pagination": { "page": 1, "per_page": 10, "total": 5, "last_page": 1 } }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token sai. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Field nội bộ `provider`, `cost_price`, `profit`, `admin_notes`, `provider_response`, `provider_extra`, `internal_extra` **không** trả ra.
+- Để lấy danh sách VPS chi tiết trong đơn → dùng [`/vps/list?order_id=...`](/vps/list).
+
+## Liên quan
+
+- [Danh sách VPS](/vps/list)
+- [Mua VPS](/vps/pay)
+- [Huỷ đơn](/vps/cancel)

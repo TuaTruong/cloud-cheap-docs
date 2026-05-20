@@ -1,0 +1,149 @@
+---
+title: "Cấu hình VPS (reinstall, đổi password, đổi IP)"
+description: "Thực hiện các action cấu hình VPS — phải có trong actions[] runtime"
+---
+
+`POST /api/v2/customer/vps/config`
+
+Endpoint đa năng cho các action cấu hình: cài lại OS, reset/set root
+password, đổi IP. Mỗi action có set tham số riêng.
+
+**Áp dụng cho**: VPS có `capabilities.config.can = true`
+**Auth**: Bearer token
+
+## Request
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID. Phải thuộc user. |
+| `action` | enum | có | `reinstall_current_os`, `reinstall_custom_os`, `reset_root_password`, `set_root_password`, `change_ip`, `rebuild_with_new_ip`. |
+| `os_version` | string | có khi `action=reinstall_custom_os` | Version OS mới (vd `"22.04"`). |
+| `password` | string (≥8) | có khi `action=set_root_password` | Password mới (1 hoa + 1 thường + 1 số + 1 ký tự đặc biệt). |
+| `ip_address` | string | có khi `action=change_ip` | IP cụ thể trong `ipv4_addresses[]` hoặc `ipv6_addresses[]` của VPS. |
+
+<Info>
+Action **phải có trong `actions[]`** của VPS (xem [`/vps/list`](/vps/list)).
+Nếu không có, request trả 422.
+</Info>
+
+### Ví dụ — Reinstall OS hiện tại
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "action": "reinstall_current_os" }'
+```
+
+### Ví dụ — Cài lại OS khác
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 4567,
+    "action": "reinstall_custom_os",
+    "os_version": "ubuntu-24.04"
+  }'
+```
+
+### Ví dụ — Set root password (chỉ định)
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 4567,
+    "action": "set_root_password",
+    "password": "NewSecure123!"
+  }'
+```
+
+### Ví dụ — Reset root password (tự sinh)
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "action": "reset_root_password" }'
+```
+
+### Ví dụ — Change IP
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/config' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": 4567,
+    "action": "change_ip",
+    "ip_address": "203.0.113.99"
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đang cài lại OS...",
+  "code": "ok",
+  "data": {
+    "id": 4567,
+    "action_status": "reinstalling",
+    "main_ipv4": "203.0.113.10"
+  },
+  "meta": {}
+}
+```
+
+Khi set/reset password thành công, response trả luôn password mới (nếu reset):
+
+```json
+{
+  "data": {
+    "id": 4567,
+    "root_password": "AutoGenPass123!",
+    "vps_username": "root"
+  }
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Param sai (vd `password` không đủ độ phức tạp, `ip_address` không thuộc VPS). |
+| 422 | `validation_failed` | `action` không có trong `actions[]` runtime của VPS. |
+| 200 | `request_failed` | Provider từ chối. Đọc `message`. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — IP không hợp lệ
+
+```json
+{
+  "success": false,
+  "message": "Địa chỉ IP không hợp lệ hoặc không thuộc VPS này",
+  "code": "validation_failed",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- **Reinstall** sẽ xoá hết data trên disk. Cần xác nhận phía UI.
+- **Change IP** chỉ chuyển IP chính sang một IP đã được cấp (trong `ipv4_addresses[]` / `ipv6_addresses[]`). Không cấp IP mới — dùng [`/vps/upgrade`](/vps/upgrade) với `upgrade_ip` nếu cần thêm IP.
+- **Set password** ưu tiên hơn reset — bạn chọn được password thay vì để hệ thống random.
+- Action async — request trả về ngay với `action_status=processing/reinstalling/...`. Poll [`/vps/list`](/vps/list) để biết khi nào xong.
+
+## Liên quan
+
+- [Power control](/vps/power-control)
+- [OS options khả dụng](/vps/os-options)
+- [Actions khả dụng](/vps/actions)
+- [Upgrade VPS](/vps/upgrade)

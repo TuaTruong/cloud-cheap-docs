@@ -1,0 +1,85 @@
+---
+title: "Actions khả dụng cho VPS"
+description: "Liệt kê tất cả action runtime có thể thực hiện cho 1 VPS"
+---
+
+`GET /api/v2/customer/vps/{id}/actions`
+
+Trả về danh sách actions có thể chạy ngay cho VPS hiện tại (dựa trên
+trạng thái runtime). UI dùng để bật/tắt các nút thao tác.
+
+**Auth**: Bearer token
+
+## Request
+
+### Path parameters
+
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `id` | integer | VPS ID. Phải thuộc user. |
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/customer/vps/4567/actions' \
+  -H 'Authorization: Bearer 1|...'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": {
+    "actions": [
+      "power_on",
+      "power_off",
+      "reboot",
+      "shutdown",
+      "reinstall_current_os",
+      "reinstall_custom_os",
+      "reset_root_password",
+      "set_root_password",
+      "change_ip"
+    ]
+  },
+  "meta": {}
+}
+```
+
+## Bảng action
+
+| Action | Mô tả | Endpoint dùng |
+|---|---|---|
+| `power_on` | Bật máy | [`/vps/power-control`](/vps/power-control) |
+| `power_off` | Tắt cứng | [`/vps/power-control`](/vps/power-control) |
+| `shutdown` | Tắt mềm | [`/vps/power-control`](/vps/power-control) |
+| `reboot` | Khởi động lại | [`/vps/power-control`](/vps/power-control) |
+| `reinstall_current_os` | Cài lại OS hiện tại | [`/vps/config`](/vps/config) |
+| `reinstall_custom_os` | Cài OS khác | [`/vps/config`](/vps/config) |
+| `reset_root_password` | Reset password ngẫu nhiên | [`/vps/config`](/vps/config) |
+| `set_root_password` | Set password chỉ định | [`/vps/config`](/vps/config) |
+| `change_ip` | Đổi IP chính | [`/vps/config`](/vps/config) |
+| `rebuild_with_new_ip` | Đổi IP + reinstall | [`/vps/config`](/vps/config) |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 404 | `not_found` | VPS không tồn tại. |
+| 403 | `forbidden` | VPS không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Danh sách thay đổi theo state runtime:
+  - VPS `active`: có `power_off`, `shutdown`, `reboot`, `reinstall_*`, `reset_root_password`.
+  - VPS `stopped`: có `power_on`, `reinstall_*`, `reset_root_password`.
+  - VPS `provisioning`/`upgrading`: thường rỗng (`actions: []`) cho đến khi xong.
+- UI nên call endpoint này khi mở menu action (hoặc cache 30s) thay vì check `capabilities.config.actions` static.
+- Field này **cũng có** trong [`/vps/list`](/vps/list) response — không cần call riêng nếu đã có data list.
+
+## Liên quan
+
+- [Power control](/vps/power-control)
+- [Config VPS](/vps/config)
+- [Capabilities](/concepts/capabilities)

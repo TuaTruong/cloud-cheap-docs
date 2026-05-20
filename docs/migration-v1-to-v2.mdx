@@ -1,0 +1,325 @@
+---
+title: "Migration v1 → v2"
+description: "Hướng dẫn chuyển reseller integration từ /api/* sang /api/v2/* — checklist + code diff"
+---
+
+Trang này dành cho **reseller hiện đang dùng API v1** muốn chuyển sang v2.
+Nếu bạn integrate mới từ đầu, bỏ qua trang này và đến thẳng
+[Quickstart](/quickstart).
+
+## Tóm tắt thay đổi
+
+<CardGroup cols={2}>
+  <Card title="URL prefix mới" icon="link">
+    `/api/customer/*` → `/api/v2/customer/*`<br/>
+    Mọi route giữ nguyên path phía sau prefix.
+  </Card>
+  <Card title="Response envelope thống nhất" icon="box">
+    Mọi endpoint trả `{ success, message, code, data, meta }`. Bạn chỉ
+    cần 1 hàm parse.
+  </Card>
+  <Card title="Field provider đã ẩn" icon="eye-slash">
+    `provider`, `provider_*`, `cost_price`, `profit`, `admin_*` không
+    còn xuất hiện. Phản ánh đúng yêu cầu private.
+  </Card>
+  <Card title="Family + capability mới" icon="diagram-project">
+    Mỗi sản phẩm có `family`, `family_code`, `capabilities` để UI
+    quyết định hành động — không cần hardcode.
+  </Card>
+</CardGroup>
+
+## 1. URL diff
+
+Mọi route giữ nguyên path, chỉ thêm `v2` prefix:
+
+| v1 | v2 |
+|---|---|
+| `GET /api/customer/profile` | `GET /api/v2/customer/profile` |
+| `GET /api/customer/proxy/list` | `GET /api/v2/customer/proxy/list` |
+| `POST /api/customer/proxy/pay` | `POST /api/v2/customer/proxy/pay` |
+| `POST /api/customer/vps/console` | `POST /api/v2/customer/vps/console` |
+| `GET /api/fetch-proxy-products` | `GET /api/v2/fetch-proxy-products` |
+| `POST /api/refresh-api-token` | `POST /api/v2/refresh-api-token` |
+| `GET /api/proxy-access/{key}/current` | `GET /api/v2/proxy-access/{key}/current` |
+
+**Quy tắc nhanh**: search-replace `/api/` → `/api/v2/` trong codebase của bạn.
+
+<Warning>
+Endpoint `GET /api/fetch-proxies-available` **không có ở v2** (đã loại khỏi
+scope). Nếu bạn đang dùng, liên hệ support trước migration.
+</Warning>
+
+## 2. Envelope diff
+
+### v1: shape không nhất quán
+
+```json
+// /customer/profile (v1) — trả thẳng object, không wrapper
+{ "name": "...", "email": "...", "api_token": "..." }
+
+// /customer/proxy/list (v1) — wrapper khác
+{ "success": true, "proxies": [...] }
+
+// /customer/vps/console (v1) — trả thẳng service result
+{ "vnc_url": "...", "expires_at": "..." }
+
+// /customer/histories/payments (v1) — Tabulator pagination
+{ "data": [...], "current_page": 1, "last_page": 5 }
+```
+
+### v2: shape thống nhất
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": { /* payload đúng cho từng endpoint */ },
+  "meta": { /* pagination nếu có */ }
+}
+```
+
+| v1 location | v2 location |
+|---|---|
+| Top-level `proxies`, `orders`, `vps-list` | `data` (array) |
+| Top-level `current_page`, `last_page`, `total` | `meta.pagination.{page, last_page, total}` |
+| Top-level raw object (vd `vnc_url`) | `data.vnc_url` |
+| Top-level `success` | `success` (giữ nguyên) |
+| Không có | `code` (snake_case lỗi/thành công) |
+
+### Error envelope
+
+**v1**:
+```json
+{ "success": false, "message": "Lỗi gì đó", "errors": {...} }
+```
+
+**v2**:
+```json
+{
+  "success": false,
+  "message": "Lỗi gì đó",
+  "code": "validation_failed",
+  "errors": {...},
+  "meta": {}
+}
+```
+
+Thêm `code` cho phép bạn `switch` trên error type. Xem [Error model](/error-model)
+cho bảng đầy đủ.
+
+## 3. Field rename / drop
+
+Một số field nội bộ đã **bị xoá** khỏi response v2 (security):
+
+| Field v1 | v2 |
+|---|---|
+| `provider` | ❌ Drop (xem `family_code` thay thế) |
+| `provider_id`, `provider_product_id`, `provider_order_id`, `provider_proxy_id`, `provider_vps_id` | ❌ Drop |
+| `provider_response`, `provider_extra`, `provider_price` | ❌ Drop |
+| `external_product_id` | ❌ Drop |
+| `cost_price`, `profit` | ❌ Drop |
+| `admin_notes`, `admin_status` | ❌ Drop |
+| `internal_extra` | ❌ Drop |
+| `api_token` (trong `/customer/profile`) | ❌ Drop — dùng `/refresh-api-token` riêng |
+| `provider_proxy_type: "IPC_BANDWIDTH_RESIDENTIAL"` | ✅ Rename → `subtype_code: "residential"` |
+| `related_order_type: "App\\Models\\ProxyOrder"` | ✅ Rename → `related_type: "proxy_order"` |
+
+Một số field **mới** xuất hiện trong v2:
+
+| Field mới | Có ở | Mục đích |
+|---|---|---|
+| `family`, `family_code` | catalog, proxy/list, vps/list | Loại sản phẩm theo kỹ thuật |
+| `capabilities` (object) | catalog, proxy/list, vps/list | Flag action khả dụng |
+| `meta.pagination` | mọi list endpoint | Standard pagination |
+| `subtype_code` | proxy bandwidth response | Loại pool (residential/mobile) |
+| `X-Api-Version: v2` | response header | Mọi endpoint v2 |
+
+## 4. Capability flag — thay vì hardcode
+
+**v1 (hardcode logic UI)** — phải biết tên backend:
+
+```js
+function showConsoleButton(vps) {
+  // v1 yêu cầu hard-code: chỉ một backend cụ thể được mở console
+  return vps.provider === '<INTERNAL_BACKEND_NAME>' && vps.main_ipv4 !== '';
+}
+```
+
+**v2 (đọc capability)**:
+
+```js
+function showConsoleButton(vps) {
+  return vps.capabilities.console.can === true;
+}
+```
+
+Lợi: nếu policy backend đổi (vd thêm provider hỗ trợ console), UI tự cập
+nhật mà không cần đổi code phía bạn.
+
+Xem [Capabilities](/concepts/capabilities) cho schema đầy đủ.
+
+## 5. Code diff — ví dụ
+
+### Tích hợp profile
+
+**v1**:
+
+```php
+$res = $http->get('/api/customer/profile', ['headers' => ['Authorization' => "Bearer $token"]]);
+$body = json_decode($res->getBody(), true);
+$balance = $body['balance']; // top-level
+$apiToken = $body['api_token']; // BAD: lộ token
+```
+
+**v2**:
+
+```php
+$res = $http->get('/api/v2/customer/profile', ['headers' => ['Authorization' => "Bearer $token"]]);
+$body = json_decode($res->getBody(), true);
+
+if (!$body['success']) {
+    throw new Exception($body['message']);
+}
+
+$balance = $body['data']['balance'];
+// api_token KHÔNG còn ở đây — dùng /refresh-api-token nếu cần
+```
+
+### Tích hợp list proxy
+
+**v1**:
+
+```php
+$res = $http->get('/api/customer/proxy/list?per_page=20');
+$body = json_decode($res->getBody(), true);
+$proxies = $body['proxies']; // top-level "proxies"
+foreach ($proxies as $p) {
+    // UI hardcode theo provider (BAD — v1 pattern)
+    $canChangeIp = $p['provider'] !== '<INTERNAL_BACKEND_NAME>' || /* condition */;
+}
+```
+
+**v2**:
+
+```php
+$res = $http->get('/api/v2/customer/proxy/list?per_page=20');
+$body = json_decode($res->getBody(), true);
+
+if (!$body['success']) { /* handle */ }
+
+$proxies = $body['data']; // chuẩn ở data
+$page = $body['meta']['pagination']['page'];
+$total = $body['meta']['pagination']['total'];
+
+foreach ($proxies as $p) {
+    // UI dùng capability
+    $canChangeIp = $p['capabilities']['change_ip']['can'];
+    $cost = $p['capabilities']['change_ip']['cost'] ?? 0;
+}
+```
+
+### Tích hợp lịch sử thanh toán
+
+**v1**:
+
+```php
+$res = $http->get('/api/customer/histories/payments?size=10');
+$body = json_decode($res->getBody(), true);
+$rows = $body['data']; // Tabulator
+$currentPage = $body['current_page'];
+$lastPage = $body['last_page'];
+```
+
+**v2**:
+
+```php
+$res = $http->get('/api/v2/customer/histories/payments?per_page=10');
+$body = json_decode($res->getBody(), true);
+
+if (!$body['success']) { /* handle */ }
+
+$rows = $body['data'];
+$currentPage = $body['meta']['pagination']['page'];
+$lastPage = $body['meta']['pagination']['last_page'];
+```
+
+Lưu ý: query param `size` → `per_page` (đổi tên).
+
+## 6. Migration checklist
+
+<Steps>
+  <Step title="Audit codebase">
+    Search-replace `/api/` → `/api/v2/`. Đếm số chỗ phải đổi.
+  </Step>
+  <Step title="Adapt response parser">
+    Viết helper `parseV2Response($body)` — trả `data` hoặc throw exception
+    dựa trên `success`. Dùng cho mọi endpoint.
+  </Step>
+  <Step title="Xoá hardcode provider name">
+    Search trong codebase mọi string khớp `provider == '<value>'` hoặc
+    so sánh `provider_*_id`. Mọi nơi dùng cho UI logic → chuyển sang
+    `capabilities.*`. (Danh sách giá trị `provider` cũ bạn từng nhận từ
+    v1: tự tham chiếu log/response cũ của mình.)
+  </Step>
+  <Step title="Update pagination">
+    Đổi `current_page` → `meta.pagination.page`, v.v.
+  </Step>
+  <Step title="Test trên staging">
+    Chạy toàn bộ flow (mua proxy/VPS, đổi IP, renew, console, …) trên
+    staging. Đảm bảo không có response shape break.
+  </Step>
+  <Step title="Deploy + monitor">
+    Deploy v2 client. Monitor log 24–48h xem có 401/422 bất thường không.
+  </Step>
+  <Step title="Cleanup v1 code">
+    Sau khi v2 ổn định, xoá code call `/api/` v1 cũ.
+  </Step>
+</Steps>
+
+## 7. Timeline EOL v1
+
+| Mốc | Hành động |
+|---|---|
+| **T+0** (publish v2) | v1 vẫn hoạt động bình thường. v2 ready. |
+| **T+0 → T+30 ngày** | Pilot reseller test v2 + feedback. |
+| **T+30 ngày** | Email broadcast all reseller về v2 timeline. |
+| **T+30 → T+90 ngày** | v1 chạy bình thường, không có header `Deprecation`. |
+| **T+90 → T+180 ngày** | v1 thêm response header `Deprecation: true` + `Sunset: <date>` (RFC 8594). Khuyến cáo migrate. |
+| **T+180 ngày** | v1 trả **410 Gone** + JSON `{ "code": "v1_sunset", "migration_url": "..." }`. |
+| **T+200 ngày** | Archive docs v1 cũ. |
+
+<Info>
+Mốc cụ thể sẽ được công bố qua email + Telegram. Theo dõi
+[t.me/cloudcheap](https://t.me/cloudcheap) để nhận thông báo.
+</Info>
+
+## 8. FAQ migration
+
+<AccordionGroup>
+  <Accordion title="Có cần đổi API token không?">
+    Không. Token Bearer dùng được cho cả v1 và v2. Không cần refresh khi migrate.
+  </Accordion>
+  <Accordion title="v1 và v2 có thể chạy song song không?">
+    Có. Bạn có thể migrate từng endpoint một, không cần big-bang.
+  </Accordion>
+  <Accordion title="Nếu khách hàng cuối đang dùng Public Access Key v1?">
+    Key giữ nguyên cho cả 2 phiên bản. Bạn chỉ cần cập nhật URL từ
+    `/api/proxy-access/...` → `/api/v2/proxy-access/...` ở phía bạn. Key
+    bên trong URL không đổi.
+  </Accordion>
+  <Accordion title="Postman collection v1 còn dùng được?">
+    Có, đến khi v1 EOL. Postman v2 mới [tải tại đây](https://cloud-cheap.com/postman/v2.json).
+  </Accordion>
+  <Accordion title="Tôi gặp lỗi khi migrate, hỏi ở đâu?">
+    Email support@cloud-cheap.com hoặc Telegram [t.me/cloudcheap](https://t.me/cloudcheap).
+    Vui lòng kèm: endpoint cụ thể, request body, response thực tế, response mong đợi.
+  </Accordion>
+</AccordionGroup>
+
+## Liên quan
+
+- [Quickstart](/quickstart) — tích hợp v2 từ đầu.
+- [Error model](/error-model) — envelope spec đầy đủ.
+- [Product families](/concepts/product-families) — phân loại sản phẩm v2.
+- [Capabilities](/concepts/capabilities) — flag dùng thay cho hardcode provider.

@@ -1,0 +1,88 @@
+---
+title: "Giới thiệu"
+description: "Tài liệu API v2 dành cho reseller / agency tích hợp dịch vụ proxy và VPS"
+---
+
+## Đối tượng tài liệu
+
+Tài liệu này dành cho **developer của reseller / agency** muốn kết nối website
+bán hàng của bạn với hệ thống chúng tôi để bán lại các dịch vụ:
+
+- **Proxy**: IPv4 Datacenter / IPv6 / Residential Rotating / Residential Static
+- **Proxy Bandwidth**: gói tính theo GB
+- **VPS**: nhiều dòng máy chủ ảo với cấu hình + vị trí khác nhau
+
+Bạn sẽ tích hợp qua HTTP REST API — chỉ cần Bearer token, không cần SDK.
+
+## Đặc điểm API v2
+
+<CardGroup cols={2}>
+  <Card title="Response envelope thống nhất" icon="box">
+    Mọi endpoint trả về cấu trúc `{ success, message, code, data, meta }`.
+    Bạn chỉ cần viết 1 hàm parse duy nhất.
+  </Card>
+  <Card title="Capability flag" icon="toggle-on">
+    Mỗi sản phẩm trả về object `capabilities` cho biết hành động nào hỗ trợ.
+    Reseller UI hiển thị/ẩn nút theo flag — không cần biết logic backend.
+  </Card>
+  <Card title="Product family rõ ràng" icon="tags">
+    Sản phẩm phân loại theo loại kỹ thuật (Proxy IPv4 Datacenter, VPS Standard…).
+    Không lộ chi tiết nguồn cung — bạn bán theo brand của bạn.
+  </Card>
+  <Card title="Versioning sạch" icon="code-branch">
+    URL `/api/v2/*` cô lập hoàn toàn với phiên bản cũ. v1 vẫn được hỗ trợ
+    đến khi bạn migration xong.
+  </Card>
+</CardGroup>
+
+## Base URL
+
+```
+https://cloud-cheap.com/api/v2
+```
+
+Mọi endpoint trong tài liệu này đều có tiền tố `/api/v2/`. Ví dụ:
+
+```
+GET  https://cloud-cheap.com/api/v2/customer/profile
+POST https://cloud-cheap.com/api/v2/customer/proxy/pay
+```
+
+## Lộ trình tích hợp đề xuất
+
+<Steps>
+  <Step title="Lấy API Token">
+    Đăng nhập portal → trang Account Settings → copy API token.
+    Chi tiết: [Authentication](/authentication).
+  </Step>
+  <Step title="Gọi request đầu tiên">
+    Thử endpoint nhẹ nhất: `GET /api/v2/customer/profile`. Xem
+    [Quickstart](/quickstart) để có ví dụ cURL + PHP.
+  </Step>
+  <Step title="Đọc catalog + capability">
+    Gọi `GET /api/v2/fetch-proxy-products` và `GET /api/v2/fetch-vps-products`
+    để biết sản phẩm bán được + các action mỗi sản phẩm hỗ trợ.
+  </Step>
+  <Step title="Tích hợp luồng mua">
+    `POST /api/v2/customer/proxy/pay` hoặc `POST /api/v2/customer/vps/pay`
+    để tạo đơn cho khách. Xem các trang Proxy / VPS bên dưới.
+  </Step>
+  <Step title="Quản lý đơn hàng">
+    Endpoint `customer/proxy/list`, `customer/vps/list` để hiển thị danh sách.
+    Action endpoint (renew, cancel, change-ip, …) cho thao tác về sau.
+  </Step>
+</Steps>
+
+## Quy ước trong tài liệu
+
+- **Bắt buộc** (cột "Bắt buộc"): tham số phải có trong request.
+- **Mã lỗi** (`code` field): chuỗi snake_case, dùng làm khoá tra lỗi phía client.
+- Mọi ví dụ dùng cURL + PHP. Bạn có thể chuyển sang ngôn ngữ khác tương đương.
+
+## Hỗ trợ
+
+- Telegram: [t.me/cloudcheap](https://t.me/cloudcheap)
+- Email: support@cloud-cheap.com
+- Postman collection: [tải tại đây](https://cloud-cheap.com/postman/v2.json)
+
+Sẵn sàng? Đến [Quickstart](/quickstart) để gọi request đầu tiên trong 5 phút.

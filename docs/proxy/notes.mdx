@@ -1,0 +1,107 @@
+---
+title: "Ghi chú cho đơn / proxy"
+description: "Cập nhật user notes cho đơn hàng hoặc cho từng proxy assignment"
+---
+
+## 1. Ghi chú cho đơn hàng
+
+`POST /api/v2/customer/proxy/update-order-note`
+
+Cập nhật trường `user_notes` cho 1 đơn hàng proxy. Hiển thị cho user trong
+danh sách đơn (vd dùng để phân loại "Khách A — Campaign Q2").
+
+**Auth**: Bearer token
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_id` | integer | có | ID đơn hàng (phải thuộc user). |
+| `user_notes` | string (≤ 2000 chars) | không | Nội dung note. Truyền `null` hoặc bỏ trống → xoá note. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/update-order-note' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "order_id": 1234, "user_notes": "Khách Z — campaign US" }'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Cập nhật ghi chú thành công",
+  "code": "ok",
+  "data": {
+    "id": 1234,
+    "user_notes": "Khách Z — campaign US"
+  },
+  "meta": {}
+}
+```
+
+### Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `order_id` không thuộc user, hoặc `user_notes` quá 2000 ký tự. |
+| 500 | `internal_error` | Lỗi server. |
+
+---
+
+## 2. Ghi chú cho từng proxy
+
+`POST /api/v2/customer/proxy/update-proxy-note`
+
+Cập nhật ghi chú cho **một proxy assignment** trong đơn (mỗi proxy trong
+một đơn có note riêng).
+
+**Auth**: Bearer token
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `assignment_id` | integer | có | ID của proxy assignment. |
+| `notes` | string (≤ 2000 chars) | không | Nội dung note. Bỏ trống = xoá. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/update-proxy-note' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "assignment_id": 9876, "notes": "Account A1 — đang chạy auto" }'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Cập nhật ghi chú thành công",
+  "code": "ok",
+  "data": {
+    "assignment_id": 9876,
+    "notes": "Account A1 — đang chạy auto"
+  },
+  "meta": {}
+}
+```
+
+### Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `assignment_id` không tồn tại. |
+| 403 | `forbidden` | Assignment không thuộc về user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Note **chỉ user thấy** — không được gửi tới provider phía sau.
+- Để lấy `assignment_id` cho từng proxy: gọi [`/proxy/list`](/proxy/list) và đọc field `id` (chính là assignment ID khi list lấy từ join).
+
+## Liên quan
+
+- [Danh sách proxy](/proxy/list)
+- [Danh sách đơn](/proxy/orders)

@@ -1,0 +1,172 @@
+---
+title: "Error model"
+description: "Cấu trúc response thống nhất + bảng error code"
+---
+
+API v2 dùng **envelope chuẩn cho mọi response** (thành công và lỗi).
+Bạn chỉ cần viết một parser duy nhất cho tất cả endpoint.
+
+## Envelope thành công
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": { /* payload */ },
+  "meta": { /* metadata: pagination, locale, v.v. */ }
+}
+```
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `success` | bool | Luôn `true` khi thành công. |
+| `message` | string | Mô tả ngắn, có thể hiện trực tiếp cho end-user. |
+| `code` | string (snake_case) | Mã máy đọc. Luôn `"ok"` khi success. |
+| `data` | object \| array | Payload chính. Luôn là object hoặc array — never null/scalar. |
+| `meta` | object | Metadata phụ trợ. Có thể chứa `pagination`, `locale`, … |
+
+### Envelope với pagination
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": [
+    { "id": 1, /* ... */ },
+    { "id": 2, /* ... */ }
+  ],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 137,
+      "last_page": 7
+    }
+  }
+}
+```
+
+## Envelope lỗi
+
+```json
+{
+  "success": false,
+  "message": "Mô tả lỗi user-facing",
+  "code": "validation_failed",
+  "errors": { /* chi tiết theo field */ },
+  "meta": {}
+}
+```
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `success` | bool | Luôn `false` khi lỗi. |
+| `message` | string | Mô tả lỗi (có thể hiện cho end-user). |
+| `code` | string | Mã lỗi machine-readable — dùng để switch logic phía client. |
+| `errors` | object | Chi tiết theo field (validation) hoặc rỗng `{}` nếu không applicable. |
+| `meta` | object | Metadata phụ. |
+
+## HTTP status mapping
+
+| Status | Khi nào | Action client |
+|---|---|---|
+| 200 | Thành công | Đọc `data`. |
+| 400 | Request sai logic, không phải validation | Đọc `code` để xử lý cụ thể. |
+| 401 | Token thiếu / sai | Refresh token hoặc báo user đăng nhập lại. |
+| 403 | Không có quyền | Ẩn chức năng phía UI. |
+| 404 | Resource không tồn tại | Refresh danh sách. |
+| 422 | Validation fail | Hiển thị `errors[field]` ngay form. |
+| 429 | Rate limit | Đợi theo `Retry-After`, retry. |
+| 500 | Lỗi server | Báo "lỗi tạm thời", thử lại sau. |
+| 503 | Provider/Service unavailable | Báo "đang bảo trì", thử lại sau. |
+
+## Bảng error code chuẩn
+
+### Authentication & quyền
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `unauthenticated` | 401 | Token thiếu, sai, hoặc đã bị refresh. |
+| `forbidden` | 403 | Token hợp lệ nhưng không có quyền. |
+| `rate_limited` | 429 | Vượt giới hạn request. |
+
+### Validation
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `validation_failed` | 422 | Một hoặc nhiều field không hợp lệ. Xem `errors`. |
+| `not_found` | 404 | Tham số trỏ tới resource không tồn tại. |
+
+### Coupon / Discount
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `coupon_invalid` | 404 | Mã coupon không tồn tại, hết hạn, hoặc không áp dụng được. |
+
+### Token
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `token_refreshed` | 200 | Token mới đã được tạo (trong `data.api_token`). |
+| `token_refresh_failed` | 500 | Refresh thất bại. Liên hệ support. |
+
+### Feature flag / Service state
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `api_v2_disabled` | 503 | API v2 đang tạm tắt cho bảo trì. Dùng v1. |
+| `feature_unavailable` | 422 | Endpoint không áp dụng cho sản phẩm hiện tại (xem `capabilities`). |
+| `internal_error` | 500 | Lỗi server. Báo support nếu lặp lại. |
+
+### Generic
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| `ok` | 200 | Thành công. |
+| `request_failed` | 4xx | Lỗi chung khi không khớp code cụ thể. |
+
+## Pattern xử lý phía client
+
+```js
+async function callApi(endpoint, options = {}) {
+  const res = await fetch(`https://cloud-cheap.com/api/v2${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      Accept: 'application/json',
+      ...options.headers,
+    },
+  });
+  const body = await res.json();
+
+  if (body.success) {
+    return body.data;
+  }
+
+  switch (body.code) {
+    case 'unauthenticated':
+      window.location.href = '/login';
+      throw new Error('Phiên đăng nhập đã hết');
+    case 'validation_failed':
+      throw new ValidationError(body.errors);
+    case 'rate_limited':
+      const wait = res.headers.get('Retry-After') || 30;
+      await sleep(wait * 1000);
+      return callApi(endpoint, options);
+    case 'feature_unavailable':
+      return null; // UI xử lý theo capability flag
+    default:
+      throw new Error(body.message);
+  }
+}
+```
+
+## Bất biến cần nhớ
+
+<Success>**`data` luôn là object hoặc array**.</Success>
+<Success>Tất cả endpoint trả về **header `X-Api-Version: v2`**.</Success>
+<Success>`Content-Type` luôn là `application/json; charset=utf-8`.</Success>
+<Success>`code` là **snake_case ASCII**.</Success>
+<Success>HTTP status mặc định: success = 200, error = thường 4xx.</Success>

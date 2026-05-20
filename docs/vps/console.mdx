@@ -1,0 +1,89 @@
+---
+title: "Mở console VNC"
+description: "Lấy URL truy cập console VNC/noVNC — chỉ VPS Standard"
+---
+
+`POST /api/v2/customer/vps/console`
+
+Mở truy cập console (VNC / noVNC) đến VPS. Trả về URL truy cập + thông
+tin xác thực tạm thời. URL có hạn (thường 1–4 giờ).
+
+<Warning>
+**Chỉ áp dụng cho VPS Standard** — `capabilities.console.can = true`.
+Các family khác trả `422 feature_unavailable`.
+</Warning>
+
+**Auth**: Bearer token
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/console' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567 }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": {
+    "console_url": "https://console-proxy.example.com/vnc/abc-xyz-123",
+    "console_type": "novnc",
+    "expires_at": "2026-05-18T14:30:00Z",
+    "credentials": {
+      "username": "admin",
+      "password": "tmp-token-123"
+    }
+  },
+  "meta": {}
+}
+```
+
+| Field | Mô tả |
+|---|---|
+| `console_url` | URL bạn redirect user tới (mở trong popup / new tab). |
+| `console_type` | `novnc` (web-based) hoặc `vnc` (cần VNC client). |
+| `expires_at` | Hết hạn truy cập. Sau thời điểm này, URL trả 404. |
+| `credentials` | User/pass tạm để login console (nếu yêu cầu). |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | `id` thiếu. |
+| 403 | `forbidden` | VPS không thuộc user. |
+| 422 | `feature_unavailable` | VPS không phải family Standard, hoặc `capabilities.console.can = false`. |
+| 422 | `feature_unavailable` | `reason: requires_ipv4` — VPS chưa có `main_ipv4`. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — feature không hỗ trợ
+
+```json
+{
+  "success": false,
+  "message": "Tính năng console không khả dụng cho VPS này",
+  "code": "feature_unavailable",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## Business notes
+
+- URL **không thể bookmark** — luôn gọi endpoint trước khi mở console.
+- Sau khi `expires_at`, gọi lại endpoint để lấy URL mới.
+- Console là **proxy** đến VPS qua hệ thống — không expose hostname/IP nội bộ của provider.
+
+## Liên quan
+
+- [Network info](/vps/network)
+- [Change password](/vps/change-password)
+- [Capabilities](/concepts/capabilities)

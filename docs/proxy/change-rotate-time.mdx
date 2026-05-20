@@ -1,0 +1,91 @@
+---
+title: "Đổi thời gian xoay IP"
+description: "Set thời gian rotate cho proxy hỗ trợ xoay IP tự động"
+---
+
+`POST /api/v2/customer/proxy/change-proxy-rotate-time`
+
+Cấu hình thời gian giữa các lần xoay IP tự động cho một proxy hỗ trợ
+rotation. Áp dụng cho proxy có `capabilities.change_rotate_time.can = true`.
+
+**Áp dụng cho**: Một số proxy non-bandwidth có khả năng rotate (đọc capability)
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID proxy. |
+| `order_number` | string | có | Mã đơn chứa proxy. |
+| `proxy_rotate_time` | integer | không | Số **giây** giữa các lần xoay. Phải ≥ `min_change_ip_time` của proxy. Bỏ trống = tắt rotation. |
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/change-proxy-rotate-time' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "proxy_id": 5678,
+    "order_number": "ORD-PROXY-001",
+    "proxy_rotate_time": 300
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Cập nhật rotation time thành công",
+  "code": "ok",
+  "data": {
+    "id": 5678,
+    "change_ip_time": "00:05:00",
+    "next_change_ip_time": "2026-05-18T11:35:00Z",
+    "min_change_ip_time": 60
+  },
+  "meta": {}
+}
+```
+
+| Field | Mô tả |
+|---|---|
+| `change_ip_time` | Format `HH:MM:SS`. |
+| `min_change_ip_time` | Số giây tối thiểu cho phép theo plan. |
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Param sai. |
+| 403 | `forbidden` | Proxy không thuộc user. |
+| 422 | `validation_failed` | `proxy_rotate_time` nhỏ hơn `min_change_ip_time`. |
+| 503 | `internal_error` | Provider tạm không xử lý. Thử lại. |
+| 500 | `internal_error` | Lỗi server. |
+
+### Ví dụ — rotate time quá nhỏ
+
+```json
+{
+  "success": false,
+  "message": "Thời gian rotate phải ≥ thời gian tối thiểu cho phép",
+  "code": "validation_failed",
+  "errors": {
+    "proxy_rotate_time": ["Phải ≥ 60 giây"]
+  },
+  "meta": {}
+}
+```
+
+## Business notes
+
+- `proxy_rotate_time = 0` hoặc bỏ trống = tắt rotation, proxy giữ IP cố định cho đến khi user đổi thủ công.
+- IP đổi tự động theo schedule sẽ ghi vào activity log.
+- Đa số proxy không hỗ trợ rotate (`capabilities.change_rotate_time.can = false`). Đọc capability trước.
+
+## Liên quan
+
+- [Đổi IP thủ công](/proxy/change-ip)
+- [Capabilities](/concepts/capabilities)

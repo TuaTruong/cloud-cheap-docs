@@ -1,0 +1,72 @@
+---
+title: "Copy proxy"
+description: "Lấy chuỗi text proxy để copy nhanh ra clipboard (không tạo file)"
+---
+
+`POST /api/v2/customer/proxy/copy`
+
+Giống [`/export`](/proxy/export) nhưng tối ưu cho UX "Copy to clipboard"
+— không cần download file.
+
+**Áp dụng cho**: Mọi family Proxy có `capabilities.export.can = true`
+**Auth**: Bearer token
+**Rate limit**: Không có
+
+## Request
+
+Tham số **giống hệt** [`/export`](/proxy/export):
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_ids[]` | array of integer | có (nếu không có `proxy_ids`) | Copy toàn bộ proxy trong đơn. |
+| `proxy_ids[]` | array of integer | có (nếu không có `order_ids`) | Copy đúng proxy đã chọn. |
+| `type` | enum | không | `standard`, `authentication`, `authentication_2`, `protocol`. Mặc định `standard`. |
+| `protocol` | string | không | Filter protocol. |
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/copy' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "proxy_ids": [5678, 5679], "type": "authentication" }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "code": "ok",
+  "data": {
+    "value": "u_AbC:p_XyZ@203.0.113.45:8080\nu_AbC:p_XyZ@203.0.113.46:8080"
+  },
+  "meta": {}
+}
+```
+
+Phía client copy text:
+
+```js
+const { data } = await callApi('/customer/proxy/copy', {
+  method: 'POST',
+  body: JSON.stringify({ proxy_ids: [5678], type: 'standard' }),
+});
+
+navigator.clipboard.writeText(data.value);
+showToast('Đã copy vào clipboard');
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu cả `order_ids` và `proxy_ids`. |
+| 403 | `forbidden` | Có order/proxy không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Liên quan
+
+- [Export proxy](/proxy/export)
+- [Danh sách proxy](/proxy/list)

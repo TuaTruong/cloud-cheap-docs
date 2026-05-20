@@ -1,0 +1,147 @@
+---
+title: "Đồng bộ trạng thái (refresh)"
+description: "Đồng bộ data đơn / proxy với provider phía sau — dùng khi UI hiển thị stale"
+---
+
+Có **3 endpoint refresh** khác nhau cho proxy, dùng tuỳ scope:
+
+## 1. Refresh một đơn
+
+`POST /api/v2/customer/proxy/refresh-order`
+
+Đồng bộ trạng thái đơn (bao gồm provider response) với provider phía sau.
+Dùng khi đơn mới mua ở trạng thái `processing` để check đã ready chưa,
+hoặc khi nghi ngờ data đơn stale.
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_id` | integer | có | ID đơn cần refresh. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "order_id": 1234 }'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đã đồng bộ trạng thái đơn",
+  "code": "ok",
+  "data": {
+    "order_id": 1234,
+    "status": "active",
+    "ready_proxies": 5
+  },
+  "meta": {}
+}
+```
+
+### Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 403 | `forbidden` | `order_id` không thuộc user. |
+| 422 | `validation_failed` | `order_id` không tồn tại. |
+| 500 | `internal_error` | Lỗi server. |
+
+---
+
+## 2. Refresh proxies của một đơn
+
+`POST /api/v2/customer/proxy/refresh-order-proxies`
+
+Đồng bộ **danh sách proxy** trong một đơn — dùng khi đơn đã active nhưng
+một số proxy bị missing data (vd `public_ip` rỗng do provider chậm cập nhật).
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_number` | string | có | Mã đơn (vd `"ORD-PROXY-001"`). Phải thuộc user. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-order-proxies' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "order_number": "ORD-PROXY-001" }'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đồng bộ proxy thành công",
+  "code": "ok",
+  "data": {
+    "order_number": "ORD-PROXY-001",
+    "synced_count": 5
+  },
+  "meta": {}
+}
+```
+
+---
+
+## 3. Refresh một proxy
+
+`POST /api/v2/customer/proxy/refresh-proxy`
+
+Đồng bộ **một proxy cụ thể** với provider. Dùng cho trường hợp đặc biệt
+khi nghi ngờ data của 1 proxy đang stale.
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `proxy_id` | integer | có | ID proxy. |
+| `order_number` | string | có | Mã đơn chứa proxy. Phải thuộc user. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/proxy/refresh-proxy' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "proxy_id": 5678, "order_number": "ORD-PROXY-001" }'
+```
+
+### Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Đồng bộ proxy thành công",
+  "code": "ok",
+  "data": {
+    "id": 5678,
+    "public_ip": "203.0.113.45",
+    "status": "active"
+  },
+  "meta": {}
+}
+```
+
+## Errors (tất cả 3 endpoint)
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Param sai. |
+| 403 | `forbidden` | Đơn/proxy không thuộc user. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Refresh là call **realtime** đến provider — chậm hơn các endpoint khác (1–3s).
+- **Không** gọi refresh trong loop. Đề xuất rate giới hạn phía client: 1 lần / 30s cho cùng resource.
+- Trường hợp UI cần auto-update, dùng polling [`/proxy/list`](/proxy/list) với chu kỳ 60s.
+
+## Liên quan
+
+- [Mua proxy](/proxy/pay)
+- [Danh sách proxy](/proxy/list)
+- [Danh sách đơn](/proxy/orders)

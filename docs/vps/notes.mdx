@@ -1,0 +1,81 @@
+---
+title: "Ghi chú cho đơn / VPS"
+description: "Cập nhật user notes cho đơn hoặc cho từng VPS"
+---
+
+## 1. Ghi chú cho đơn
+
+`POST /api/v2/customer/vps/update-order-note`
+
+**Auth**: Bearer token
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `order_id` | integer | có | ID đơn VPS (phải thuộc user). |
+| `user_notes` | string (≤ 2000) | không | Nội dung note. Bỏ trống = xoá. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/update-order-note' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "order_id": 5001, "user_notes": "Server cho khách Z" }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Cập nhật ghi chú thành công",
+  "code": "ok",
+  "data": { "id": 5001, "user_notes": "Server cho khách Z" },
+  "meta": {}
+}
+```
+
+---
+
+## 2. Ghi chú cho VPS
+
+`POST /api/v2/customer/vps/update-vps-note`
+
+**Auth**: Bearer token
+
+### Request
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `id` | integer | có | VPS ID (phải thuộc user). |
+| `notes` | string (≤ 2000) | không | Nội dung note. |
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/update-vps-note' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{ "id": 4567, "notes": "Production WordPress" }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "code": "ok",
+  "data": { "id": 4567, "notes": "Production WordPress" },
+  "meta": {}
+}
+```
+
+## Errors (cả 2)
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | ID không thuộc user, hoặc notes quá 2000 ký tự. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Liên quan
+
+- [Danh sách VPS](/vps/list)
+- [Danh sách đơn](/vps/orders)

@@ -1,0 +1,113 @@
+---
+title: "Mua VPS"
+description: "Tạo đơn hàng VPS mới — chọn plan, OS, location, cấu hình, addons"
+---
+
+`POST /api/v2/customer/vps/pay`
+
+Tạo đơn VPS mới. Số tiền trừ từ `balance` user. Support nhiều family VPS
+(Standard / Pro / Basic / Performance / Streaming / Custom / Promo) — UI
+nên gọi [`fetch-product-options`](/catalog/fetch-product-options) trước
+để biết options khả dụng cho plan.
+
+**Áp dụng cho**: Mọi family VPS
+**Auth**: Bearer token
+
+## Request
+
+### Body parameters
+
+| Tham số | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `plan_id` | integer | có | ID plan từ catalog. |
+| `period` | string | có | Chu kỳ (`monthly`, `quarterly`, `yearly`, …). |
+| `location` | string | có | Mã location/region. |
+| `os_type` | string | có | Loại OS (vd `ubuntu`, `centos`, `windows`). |
+| `os_version` | string | có | Version OS (vd `22.04`, `2022`). |
+| `package` | string | không | SKU package (cho plan có nhiều biến thể). |
+| `vps_hostname` | string | không | Hostname mong muốn. |
+| `vps_password` | string (≥8) | không | Password root tự chọn. Yêu cầu: 1 hoa + 1 thường + 1 số + 1 ký tự đặc biệt. Nếu bỏ trống, hệ thống auto-generate. |
+| `quantity` | integer ≥ 1 | không | Số VPS mua. Mặc định `1`. |
+| `auto_renewal` | boolean | không | Bật auto-renew. Plan phải có `auto_renew_enabled`. |
+| `enable_ips6_subnet` | boolean | không | Yêu cầu IPv6 subnet. |
+| `cpu_plus` | integer ≥ 0 | không | Addon CPU (đơn vị: core). |
+| `ram_plus` | integer ≥ 0 | không | Addon RAM (GB). |
+| `disk_plus` | integer ≥ 0 | không | Addon Disk (GB). |
+| `ip_plus` | integer ≥ 0 | không | Addon số IP thêm. |
+| `price` | number | không | Giá hiển thị cho user (server verify). |
+| `total` | number | không | Tổng hiển thị (server verify). |
+| `coupon_code` | string | không | Mã coupon. |
+
+<Info>
+Với **VPS Pro**: `cpu_plus`, `ram_plus`, `disk_plus` dùng pricing fixed +
+`disk_plus` phải là bội số của 10 (`disk_step_gb = 10` từ `capabilities`).
+Với các family khác: pricing per-unit, `disk_plus` step = 1.
+</Info>
+
+### Ví dụ
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/pay' \
+  -H 'Authorization: Bearer 1|...' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "plan_id": 5,
+    "period": "monthly",
+    "location": "vn-fpt",
+    "os_type": "ubuntu",
+    "os_version": "22.04",
+    "vps_hostname": "vm-prod-01",
+    "cpu_plus": 2,
+    "ram_plus": 4,
+    "disk_plus": 20,
+    "quantity": 1,
+    "auto_renewal": true
+  }'
+```
+
+## Response thành công
+
+```json
+{
+  "success": true,
+  "message": "Tạo đơn VPS thành công",
+  "code": "ok",
+  "data": {
+    "order_id": 5001,
+    "order_number": "ORD-VPS-001",
+    "status": "processing",
+    "quantity": 1,
+    "amount": 280000,
+    "balance_after": 220000
+  },
+  "meta": {}
+}
+```
+
+<Info>
+Đơn ở trạng thái `processing` cho đến khi provider provision xong VPS
+(thường 1–10 phút). Poll [`/vps/list?order_id=...`](/vps/list) hoặc
+[`/vps/refresh`](/vps/refresh) để biết khi nào VPS sẵn sàng.
+</Info>
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 422 | `validation_failed` | Thiếu param hoặc sai format password. |
+| 422 | `validation_failed` | `auto_renewal=true` mà plan không cho phép. |
+| 503 | `internal_error` | Số dư không đủ. |
+| 500 | `internal_error` | Lỗi server. |
+
+## Business notes
+
+- Sau pay thành công, có thể nhận được nhiều VPS records (theo `quantity`) — query qua [`/vps/list`](/vps/list).
+- Giá cuối được tính server-side. `price` + `total` trong request chỉ để verify so với client (chống tampering).
+- Password phải đủ độ phức tạp: 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt, tối thiểu 8 ký tự.
+
+## Liên quan
+
+- [Catalog VPS](/catalog/fetch-vps-products)
+- [Options chi tiết plan](/catalog/fetch-product-options)
+- [Danh sách VPS](/vps/list)
+- [Nâng cấp VPS](/vps/upgrade)

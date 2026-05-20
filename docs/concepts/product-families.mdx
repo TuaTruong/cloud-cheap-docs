@@ -1,0 +1,172 @@
+---
+title: "Product families"
+description: "12 family sản phẩm bạn có thể bán lại — phân chia theo loại kỹ thuật"
+---
+
+## Vì sao có family?
+
+Sản phẩm trong catalog rất nhiều SKU. Để code UI và logic giá phía bạn
+gọn gàng, mỗi sản phẩm thuộc về **một family** — nhóm các sản phẩm có
+cùng đặc tính kỹ thuật và surface tính năng tương tự.
+
+Mọi response catalog (`/fetch-proxy-products`, `/fetch-vps-products`) và
+mọi record proxy/VPS (`/customer/proxy/list`, `/customer/vps/list`) đều có
+hai field:
+
+| Field | Kiểu | Ví dụ |
+|---|---|---|
+| `family` | string | `"Proxy IPv4 Datacenter"` |
+| `family_code` | string (snake_case) | `"proxy_ipv4_datacenter"` |
+
+**`family_code` ổn định**, dùng làm khoá lookup phía code. `family` là tên
+hiển thị (có thể đổi cho marketing).
+
+## 5 family Proxy
+
+<CardGroup cols={2}>
+  <Card title="Proxy IPv4 Datacenter" icon="globe">
+    `family_code`: `proxy_ipv4_datacenter`<br/>
+    IPv4 từ datacenter. Đa region. Có thể đổi IP (đa số trường hợp), đổi
+    auth qua user/password.
+  </Card>
+  <Card title="Proxy IPv6" icon="hashtag">
+    `family_code`: `proxy_ipv6`<br/>
+    IPv6 từ datacenter. Đa region, đa giao thức. Không đổi IP, không đổi
+    auth.
+  </Card>
+  <Card title="Proxy Residential Rotating" icon="arrows-rotate">
+    `family_code`: `proxy_residential_rotating`<br/>
+    Residential IP, IP đổi tự động qua mỗi request. Không cố định.
+  </Card>
+  <Card title="Proxy Residential Static" icon="house">
+    `family_code`: `proxy_residential_static`<br/>
+    Residential IP nhưng giữ nguyên (sticky). Đổi auth được, không đổi IP
+    (vì đã static).
+  </Card>
+</CardGroup>
+
+<Card title="Proxy Bandwidth (GB)" icon="gauge" href="/proxy/bandwidth/config-options">
+  `family_code`: `proxy_bandwidth`<br/>
+  Gói tính theo dung lượng GB. Không hết hạn theo thời gian, hết hạn khi
+  hết GB. Không đổi IP / renew theo period — thay vào đó **generate** danh
+  sách proxy mới từ pool theo cấu hình filter (country, ASN, sticky/rotating).
+</Card>
+
+## 7 family VPS
+
+<CardGroup cols={2}>
+  <Card title="VPS Standard" icon="server">
+    `family_code`: `vps_standard`<br/>
+    Dòng VPS đầy đủ tính năng nhất. **Có** Console, Network info,
+    Credentials, Change password, Upgrade bandwidth.
+  </Card>
+  <Card title="VPS Pro" icon="rocket">
+    `family_code`: `vps_pro`<br/>
+    VPS giá fixed, bước upgrade disk 10 GB. **Không** có Console / Network
+    info / Change password (chỉ qua reinstall).
+  </Card>
+  <Card title="VPS Basic" icon="cube">
+    `family_code`: `vps_basic`<br/>
+    Dòng VPS giá rẻ, đa region. Có Power control + Config (reinstall,
+    reset root password, change IP) + Upgrade. **Không** có Console.
+  </Card>
+  <Card title="VPS Performance" icon="bolt">
+    `family_code`: `vps_performance`<br/>
+    VPS cấu hình cao hơn (CPU mạnh, RAM lớn). Hành động giống Basic.
+  </Card>
+  <Card title="VPS Streaming" icon="video">
+    `family_code`: `vps_streaming`<br/>
+    Tối ưu cho streaming (YouTube, Twitch). Region Germany / Finland.
+    Hành động giống Basic.
+  </Card>
+  <Card title="VPS Custom" icon="sliders">
+    `family_code`: `vps_custom`<br/>
+    Cấu hình tự chỉnh CPU/RAM/Disk. Giá tính theo addon.
+  </Card>
+</CardGroup>
+
+<Card title="VPS Promo" icon="tag">
+  `family_code`: `vps_promo`<br/>
+  Gói khuyến mãi giá rẻ, region và OS giới hạn. Hành động giống Basic.
+</Card>
+
+## Cách dùng family
+
+### 1. Lọc catalog theo family
+
+```bash
+curl 'https://cloud-cheap.com/api/v2/fetch-proxy-products' \
+  -H 'Authorization: Bearer <token>'
+```
+
+Response group theo `family_code`:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "family": "Proxy IPv4 Datacenter",
+      "family_code": "proxy_ipv4_datacenter",
+      "plans": [
+        { "id": 10, "name": "...", "price": 50000, /* ... */ }
+      ]
+    },
+    {
+      "family": "Proxy Residential Rotating",
+      "family_code": "proxy_residential_rotating",
+      "plans": [/* ... */]
+    }
+  ]
+}
+```
+
+Phía UI bạn render tab theo family, gọn gàng.
+
+### 2. Phân biệt logic theo family_code
+
+```js
+function shouldShowChangeIpButton(proxy) {
+  return proxy.capabilities.change_ip.can === true;
+}
+
+function priceRangeForFamily(familyCode) {
+  switch (familyCode) {
+    case 'proxy_residential_static':
+    case 'proxy_residential_rotating':
+      return { min: 80000, max: 150000 };
+    case 'proxy_ipv4_datacenter':
+      return { min: 40000, max: 60000 };
+    case 'proxy_bandwidth':
+      return { min: 0, max: null };
+    default:
+      return null;
+  }
+}
+```
+
+### 3. Quyết định flow tích hợp
+
+Mỗi family có flow mua + quản lý hơi khác:
+
+- **Proxy non-bandwidth**: mua theo `quantity` × period → trả về danh sách
+  proxy có `expired_at`.
+- **Proxy Bandwidth**: mua theo `bandwidth_gb` → mở gói GB → **generate**
+  proxy list từ pool theo nhu cầu.
+- **VPS**: mua theo `period` + config → trả về 1 record VPS, sau đó có
+  thể `power-control`, `config`, `upgrade`.
+
+Mỗi flow có trang riêng trong tài liệu này.
+
+## Lưu ý quan trọng
+
+<Info>
+Family **ổn định trong thời gian dài** nhưng có thể được bổ sung. Code
+client nên dùng `switch (family_code)` với `default` xử lý fallback an
+toàn (vd "Sản phẩm này chưa hỗ trợ").
+</Info>
+
+<Warning>
+**Không bao giờ** parse tên brand từ `name` hoặc `plan` của sản phẩm.
+Chỉ dùng `family_code` + `capabilities` để quyết định logic.
+</Warning>

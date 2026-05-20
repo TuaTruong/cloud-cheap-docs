@@ -1,0 +1,213 @@
+---
+title: "Capability flags"
+description: "Object capabilities — cho biết action nào áp dụng cho từng record"
+---
+
+## Bài toán
+
+Reseller UI cần hiển thị / ẩn các nút thao tác (Đổi IP, Đổi auth,
+Console, …) tuỳ theo từng proxy / VPS. Mỗi family hỗ trợ tập tính năng
+khác nhau, và đôi khi runtime state (vd VPS đang provisioning) cũng làm
+một số action tạm thời không khả dụng.
+
+Thay vì bạn phải hard-code logic đó ở client, mọi record trả về kèm object
+`capabilities` cho bạn biết action nào dùng được.
+
+## Cấu trúc capability
+
+Mỗi flag là một object:
+
+```json
+{
+  "can": true,
+  "reason": null
+}
+```
+
+Khi `can = false`, `reason` cho biết lý do (machine-readable):
+
+```json
+{
+  "can": false,
+  "reason": "family_unsupported"
+}
+```
+
+Một số flag có thêm metadata (vd `auth_types`, `min_days`, `disk_step_gb`):
+
+```json
+{
+  "can": true,
+  "auth_types": ["user_pass", "whitelist_ip"],
+  "reason": null
+}
+```
+
+## Capability Proxy
+
+Trả về tại `GET /api/v2/customer/proxy/list` cho mỗi record proxy:
+
+| Flag | Mô tả |
+|---|---|
+| `change_ip` | Đổi IP. Có thể có `cost` (giá phải trả). |
+| `change_auth` | Đổi user/pass hoặc whitelist IP. `auth_types` liệt kê kiểu hỗ trợ. |
+| `change_rotate_time` | Đổi thời gian xoay IP (chỉ proxy xoay). |
+| `renew` | Gia hạn theo ngày. `min_days` cho biết ngày tối thiểu. |
+| `auto_renew` | Bật tự động gia hạn. |
+| `export` | Export proxy list ra file/text. |
+| `bandwidth_package` | Là gói bandwidth GB? Object có `is_bandwidth` (bool). |
+| `public_access_key` | Có endpoint public proxy-access không? Có `endpoints: ["current", "new"]`. |
+
+### Ví dụ — Proxy IPv4 Datacenter
+
+```json
+{
+  "id": 1234,
+  "family": "Proxy IPv4 Datacenter",
+  "family_code": "proxy_ipv4_datacenter",
+  "public_ip": "1.2.3.4",
+  "port": 8080,
+  /* ... */
+  "capabilities": {
+    "change_ip":          { "can": true,  "cost": 0,    "reason": null },
+    "change_auth":        { "can": true,  "auth_types": ["user_pass"], "reason": null },
+    "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+    "renew":              { "can": true,  "min_days": 3, "reason": null },
+    "auto_renew":         { "can": true,  "reason": null },
+    "export":             { "can": true,  "reason": null },
+    "bandwidth_package":  { "is_bandwidth": false },
+    "public_access_key":  { "can": true,  "endpoints": ["current", "new"], "reason": null }
+  }
+}
+```
+
+### Ví dụ — Proxy Bandwidth (GB)
+
+```json
+"capabilities": {
+  "change_ip":          { "can": false, "reason": "bandwidth_only" },
+  "change_auth":        { "can": false, "auth_types": [], "reason": "bandwidth_only" },
+  "change_rotate_time": { "can": false, "reason": "bandwidth_only" },
+  "renew":              { "can": false, "min_days": 0, "reason": "bandwidth_only" },
+  "auto_renew":         { "can": false, "reason": "bandwidth_only" },
+  "export":             { "can": true,  "reason": null },
+  "bandwidth_package":  { "is_bandwidth": true },
+  "public_access_key":  { "can": true,  "endpoints": ["current", "new"], "reason": null }
+}
+```
+
+Gói bandwidth không có change-ip / renew theo period — flow khác hoàn toàn,
+xem trang [Proxy Bandwidth](/proxy/bandwidth/config-options).
+
+## Capability VPS
+
+Trả về tại `GET /api/v2/customer/vps/list`:
+
+| Flag | Mô tả |
+|---|---|
+| `console` | Mở console (VNC / noVNC). |
+| `network` | Lấy thông tin network (IPv4/IPv6, bandwidth). |
+| `credentials` | Lấy username + root password. |
+| `change_password` | Đổi root password trên VPS đang chạy. |
+| `upgrade_bandwidth` | Nâng tốc độ mạng. |
+| `power_control` | Start / Stop / Reboot / Shutdown. `actions` liệt kê. |
+| `config` | Reinstall, reset root password (qua reinstall), change IP. `actions` liệt kê. |
+| `upgrade` | Nâng cấp CPU / RAM / Disk / IP. Có `fixed_pricing` và `disk_step_gb`. |
+| `auto_renew` | Bật tự động gia hạn. |
+
+### Ví dụ — VPS Standard
+
+```json
+"capabilities": {
+  "console":           { "can": true, "reason": null },
+  "network":           { "can": true, "reason": null },
+  "credentials":       { "can": true, "reason": null },
+  "change_password":   { "can": true, "reason": null },
+  "upgrade_bandwidth": { "can": true, "reason": null },
+  "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
+  "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
+  "upgrade":           { "can": true, "fixed_pricing": false, "disk_step_gb": 1, "reason": null },
+  "auto_renew":        { "can": true, "reason": null }
+}
+```
+
+### Ví dụ — VPS Pro
+
+```json
+"capabilities": {
+  "console":           { "can": false, "reason": "family_unsupported" },
+  "network":           { "can": false, "reason": "family_unsupported" },
+  "credentials":       { "can": false, "reason": "family_unsupported" },
+  "change_password":   { "can": false, "reason": "family_unsupported" },
+  "upgrade_bandwidth": { "can": false, "reason": "family_unsupported" },
+  "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
+  "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
+  "upgrade":           { "can": true, "fixed_pricing": true, "disk_step_gb": 10, "reason": null },
+  "auto_renew":        { "can": true, "reason": null }
+}
+```
+
+VPS Pro **dùng pricing fixed** + **disk step 10 GB** — phía UI bạn render
+giá theo cách khác Standard.
+
+## Bảng `reason` codes
+
+| Code | Khi nào |
+|---|---|
+| `family_unsupported` | Family này không bao giờ hỗ trợ action (vd Console cho VPS Pro). |
+| `plan_unsupported` | Plan cụ thể bị disable bởi business rule. |
+| `not_static` | Yêu cầu proxy static mà record là rotating. |
+| `bandwidth_only` | Action chỉ áp dụng cho gói bandwidth GB (hoặc ngược lại). |
+| `runtime_disabled` | Disable bởi state runtime (vd VPS đang provisioning). |
+| `requires_ipv4` | Yêu cầu VPS đã có IPv4 chính. |
+| `insufficient_balance` | Số dư không đủ cho action có phí. |
+| `provider_outage` | Provider phía sau đang gián đoạn. |
+| `null` | Action khả dụng (khi `can = true`). |
+
+## Pattern UI dùng capability
+
+```jsx
+function ProxyActions({ proxy }) {
+  const caps = proxy.capabilities;
+
+  return (
+    <div>
+      {caps.change_ip.can && (
+        <Button onClick={changeIp}>
+          Đổi IP {caps.change_ip.cost > 0 && `(${formatPrice(caps.change_ip.cost)})`}
+        </Button>
+      )}
+
+      {caps.change_auth.can && (
+        <ChangeAuthDialog supportedTypes={caps.change_auth.auth_types} />
+      )}
+
+      {caps.renew.can && (
+        <RenewDialog minDays={caps.renew.min_days} />
+      )}
+
+      {!caps.public_access_key.can && (
+        <Tooltip text={tooltipFor(caps.public_access_key.reason)}>
+          <Button disabled>Public Access Key</Button>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
+function tooltipFor(reason) {
+  switch (reason) {
+    case 'family_unsupported': return 'Loại proxy này không hỗ trợ';
+    case 'not_static':         return 'Chỉ dùng cho proxy static';
+    case 'bandwidth_only':     return 'Tính năng chỉ cho gói bandwidth';
+    default:                   return 'Không khả dụng';
+  }
+}
+```
+
+## Bất biến
+
+<Success>**Mỗi record có đầy đủ tất cả flag** — không có flag bị thiếu.</Success>
+<Success>Khi `can = false`, `reason` **luôn có** giá trị non-null.</Success>
+<Success>Khi `can = true`, `reason = null`.</Success>
+<Success>Capability tính cả default theo family **và** runtime state — bạn nhận được kết quả cuối.</Success>

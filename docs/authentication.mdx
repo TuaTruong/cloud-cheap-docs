@@ -1,0 +1,161 @@
+---
+title: "Authentication"
+description: "Xác thực bằng Bearer token cho mọi endpoint reseller"
+---
+
+## Tổng quan
+
+API v2 dùng **Bearer token** cho mọi endpoint yêu cầu đăng nhập. Token là
+một chuỗi sinh từ portal khi bạn refresh, ví dụ:
+
+```
+1|abcdef1234567890ghijklmnop
+```
+
+Bạn đính kèm token vào mọi request qua header `Authorization`:
+
+```
+Authorization: Bearer 1|abcdef1234567890ghijklmnop
+```
+
+## 1. Lấy token
+
+Có hai cách:
+
+### Cách A — Qua portal (lần đầu)
+
+1. Đăng nhập [cloud-cheap.com](https://cloud-cheap.com).
+2. Vào **Account Settings → API Token**.
+3. Click **Tạo API Token mới** → copy token (chỉ hiện 1 lần).
+
+### Cách B — Qua API (tự động hoá)
+
+Nếu bạn đã có token cũ (hoặc còn session cookie), gọi:
+
+```bash
+curl -X POST 'https://cloud-cheap.com/api/v2/refresh-api-token' \
+  -H 'Authorization: Bearer <token-cu>' \
+  -H 'Accept: application/json'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "API token đã được làm mới thành công.",
+  "code": "token_refreshed",
+  "data": {
+    "api_token": "1|new-token-here",
+    "token_type": "Bearer"
+  },
+  "meta": {}
+}
+```
+
+<Warning>
+Mỗi lần refresh **xoá hết** mọi token cũ. Nếu có nhiều dịch vụ đang dùng
+chung tài khoản, tất cả sẽ phải đổi sang token mới.
+</Warning>
+
+## 2. Đính kèm token vào request
+
+<CodeGroup>
+
+```bash cURL
+curl 'https://cloud-cheap.com/api/v2/customer/profile' \
+  -H 'Authorization: Bearer 1|abcdef1234567890ghijklmnop' \
+  -H 'Accept: application/json'
+```
+
+```php PHP
+$ch = curl_init($url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer ' . $apiToken,
+        'Accept: application/json',
+    ],
+]);
+```
+
+```javascript Fetch
+fetch(url, {
+  headers: {
+    Authorization: `Bearer ${apiToken}`,
+    Accept: 'application/json',
+  },
+});
+```
+
+</CodeGroup>
+
+## 3. Public Access Key (cho proxy xoay)
+
+Khác với Bearer dành cho reseller, có một dạng key thứ hai dùng để khách
+**cuối** (end-user) gọi proxy xoay trực tiếp:
+
+```
+GET /api/v2/proxy-access/{api_key}/current
+GET /api/v2/proxy-access/{api_key}/new
+```
+
+- Key đi trong **URL**, không phải header.
+- **Không** cần Bearer.
+- Mỗi proxy/đơn hàng có key riêng — không phải token tài khoản reseller.
+
+Chi tiết: [Public access key](/proxy/public-access-key).
+
+## 4. Lỗi xác thực thường gặp
+
+| HTTP | `code` | Nguyên nhân |
+|---|---|---|
+| 401 | `unauthenticated` | Thiếu header `Authorization`, token sai, token đã bị refresh. |
+| 401 | `unauthenticated` | Token đúng nhưng tài khoản bị khoá / xoá. |
+| 403 | `forbidden` | Token hợp lệ nhưng không có quyền cho endpoint cụ thể (vd cố gọi admin endpoint). |
+| 429 | `rate_limited` | Vượt rate limit. Đợi và thử lại. |
+
+Ví dụ response 401:
+
+```json
+{
+  "success": false,
+  "message": "Unauthenticated.",
+  "code": "unauthenticated",
+  "errors": {},
+  "meta": {}
+}
+```
+
+## 5. Best practice
+
+<AccordionGroup>
+  <Accordion title="Lưu token an toàn">
+    Token có quyền truy cập toàn bộ tài khoản của bạn. Không commit token
+    vào git. Lưu trong env file hoặc secret manager.
+  </Accordion>
+  <Accordion title="Chuẩn bị flow refresh tự động">
+    Token không có expire mặc định, nhưng nếu bị refresh từ portal sẽ
+    invalidate. Code client nên có fallback: nếu nhận 401 → báo admin
+    cập nhật token, không retry vô hạn.
+  </Accordion>
+  <Accordion title="1 môi trường = 1 token">
+    Nếu bạn có staging + production, mỗi môi trường dùng token riêng để
+    refresh không phá môi trường còn lại.
+  </Accordion>
+  <Accordion title="Tránh log token">
+    Cẩn thận khi log request — không log header `Authorization` đầy đủ.
+    Chỉ log 6 ký tự đầu để phục vụ debug.
+  </Accordion>
+</AccordionGroup>
+
+## Rate limit
+
+| Loại endpoint | Giới hạn (per IP) |
+|---|---|
+| Public proxy access `/proxy-access/{key}/current` | 60 req / phút |
+| Public proxy access `/proxy-access/{key}/new` | 20 req / phút |
+| Reseller endpoint (mọi route Bearer) | Khuyến nghị **≤ 60 req / phút** mỗi endpoint |
+
+Vượt giới hạn → HTTP 429 + `code: rate_limited`. Có header `Retry-After` chỉ số
+giây nên đợi.

@@ -1,0 +1,110 @@
+---
+title: "Làm mới API token"
+description: "Tạo token mới cho tài khoản — invalidate toàn bộ token cũ"
+---
+
+`POST /api/v2/refresh-api-token`
+
+Tạo một API token mới cho tài khoản và **xoá toàn bộ token cũ**. Dùng
+khi: token cũ bị lộ, đổi sang môi trường mới, hoặc theo policy rotation
+định kỳ.
+
+**Áp dụng cho**: User đã có Bearer token (hoặc session cookie)
+**Auth**: Bearer token cũ (xem [Authentication](/authentication))
+**Rate limit**: Không có
+
+<Warning>
+Mọi token cũ (kể cả token gọi request này) **sẽ bị huỷ ngay sau khi
+endpoint trả về**. Mọi service / app đang dùng token cũ sẽ phải cập nhật
+sang token mới.
+</Warning>
+
+## Request
+
+Không cần body.
+
+### Ví dụ
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST 'https://cloud-cheap.com/api/v2/refresh-api-token' \
+  -H 'Authorization: Bearer 1|old-token...' \
+  -H 'Accept: application/json'
+```
+
+```php PHP
+$ch = curl_init('https://cloud-cheap.com/api/v2/refresh-api-token');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_HTTPHEADER     => [
+        'Authorization: Bearer ' . $oldApiToken,
+        'Accept: application/json',
+    ],
+]);
+$body = curl_exec($ch);
+$response = json_decode($body, true);
+
+if ($response['success']) {
+    $newToken = $response['data']['api_token'];
+    // Lưu newToken vào nơi an toàn
+}
+```
+
+</CodeGroup>
+
+## Response thành công
+
+### Schema
+
+| Field | Kiểu | Mô tả |
+|---|---|---|
+| `code` | string | Luôn `"token_refreshed"` khi thành công. |
+| `data.api_token` | string | Token mới — **chỉ hiện 1 lần**, lưu ngay. |
+| `data.token_type` | string | Luôn `"Bearer"`. |
+
+### Ví dụ
+
+```json
+{
+  "success": true,
+  "message": "API token đã được làm mới thành công.",
+  "code": "token_refreshed",
+  "data": {
+    "api_token": "2|new-token-value-here",
+    "token_type": "Bearer"
+  },
+  "meta": {}
+}
+```
+
+## Errors
+
+| HTTP | `code` | Khi nào |
+|---|---|---|
+| 401 | `unauthenticated` | Token cũ thiếu / sai. |
+| 500 | `token_refresh_failed` | Lỗi server khi tạo token mới. Liên hệ support nếu lặp lại. |
+
+## Side effects
+
+Khi thành công, hệ thống tự động:
+
+- **Xoá toàn bộ token cũ** của user (kể cả token đang dùng để gọi request này).
+- **Cập nhật** `users.api_token` thành token mới.
+- **Gửi email thông báo** cho user về việc đổi token (để cảnh báo nếu unauthorized).
+
+## Business notes
+
+- Mỗi user **chỉ có 1 token hợp lệ** tại một thời điểm.
+- Sau khi refresh, token cũ sẽ trả 401 cho mọi request tiếp theo — bao
+  gồm request đang dở dang.
+- Đề xuất flow phía reseller:
+  1. Refresh token định kỳ (vd 90 ngày).
+  2. Lưu token mới vào secret manager / env file.
+  3. Deploy / restart service dùng token.
+
+## Liên quan
+
+- [Authentication](/authentication)
+- [Profile](/account/profile)
