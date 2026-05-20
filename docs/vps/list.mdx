@@ -1,14 +1,14 @@
 ---
 title: "Danh sách VPS"
-description: "Liệt kê VPS của tài khoản kèm family + capabilities cho mỗi record"
+description: "Liệt kê VPS của tài khoản kèm group + capabilities cho mỗi record"
 ---
 
 `GET /api/v2/customer/vps/list`
 
-Lấy danh sách VPS user đang sở hữu. Mỗi record có `family`, `family_code`,
+Lấy danh sách VPS user đang sở hữu. Mỗi record có `group`, `group_code`,
 `capabilities` (đã áp runtime override) để UI biết hiển thị nút nào.
 
-**Áp dụng cho**: Mọi family VPS
+**Áp dụng cho**: Mọi group VPS
 **Auth**: Bearer token
 
 ## Request
@@ -37,7 +37,7 @@ Mỗi VPS record:
 | Field | Kiểu | Mô tả |
 |---|---|---|
 | `id` | integer | VPS ID. |
-| `family` / `family_code` | string | Family hiển thị + code (xem [Product families](/concepts/product-families)). |
+| `group` / `group_code` | string | Group hiển thị + code (xem [Product families](/concepts/product-groups)). |
 | `hostname` | string | Hostname VPS. |
 | `os_type` / `os_version` | string | Hệ điều hành đang chạy. |
 | `period` | string | Chu kỳ thanh toán (`monthly`, `quarterly`, …). |
@@ -68,8 +68,8 @@ Mỗi VPS record:
   "data": [
     {
       "id": 4567,
-      "family": "VPS Standard",
-      "family_code": "vps_standard",
+      "group": "VPS Standard",
+      "group_code": "vps_standard",
       "hostname": "vm-prod-01",
       "os_type": "ubuntu",
       "os_version": "22.04",

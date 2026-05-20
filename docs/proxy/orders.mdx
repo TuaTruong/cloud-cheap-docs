@@ -9,7 +9,7 @@ Lấy danh sách đơn proxy đã mua. Khác với [`/proxy/list`](/proxy/list)
 (liệt kê từng proxy), endpoint này liệt kê **đơn hàng** — mỗi đơn có thể
 chứa nhiều proxy.
 
-**Áp dụng cho**: Mọi family Proxy
+**Áp dụng cho**: Mọi group Proxy
 **Auth**: Bearer token
 **Rate limit**: Không có
 
@@ -43,7 +43,7 @@ Mỗi order:
 | `order_number` | string | Mã đơn (vd `"ORD-PROXY-001"`). |
 | `quantity` | integer | Số proxy trong đơn. |
 | `price` | number | Tổng tiền đơn (VND). |
-| `family` / `family_code` | string | Family của plan trong đơn. |
+| `group` / `group_code` | string | Group của plan trong đơn. |
 | `user_status` | string | `pending`, `active`, `expired`, `cancelled`, … |
 | `period` | string | Vd `30 ngày`, hoặc `100 GB`. |
 | `user_notes` | string \| null | Ghi chú của user cho đơn. |
@@ -67,8 +67,8 @@ Mỗi order:
       "order_number": "ORD-PROXY-001",
       "quantity": 5,
       "price": 250000,
-      "family": "Proxy IPv4 Datacenter",
-      "family_code": "proxy_ipv4_datacenter",
+      "group": "Proxy IPv4 Datacenter",
+      "group_code": "proxy_ipv4_datacenter",
       "user_status": "active",
       "period": "30 ngày",
       "user_notes": "Campaign Q2 US",

@@ -1,14 +1,14 @@
 ---
 title: "Danh sách sản phẩm VPS"
-description: "Catalog các gói VPS active, nhóm theo product family, kèm capabilities mặc định"
+description: "Catalog các gói VPS active, nhóm theo product group, kèm capabilities mặc định"
 ---
 
 `GET /api/v2/fetch-vps-products`
 
-Trả về toàn bộ sản phẩm VPS đang active, **nhóm theo product family**.
-Mỗi plan có sẵn `family`, `family_code` và `capabilities` mặc định.
+Trả về toàn bộ sản phẩm VPS đang active, **nhóm theo product group**.
+Mỗi plan có sẵn `group`, `group_code` và `capabilities` mặc định.
 
-**Áp dụng cho**: Mọi family VPS
+**Áp dụng cho**: Mọi group VPS
 **Auth**: Không bắt buộc
 **Rate limit**: Không có
 
@@ -31,13 +31,13 @@ curl 'https://cloud-cheap.com/api/v2/fetch-vps-products?locale=vi' \
 
 ### Schema
 
-Top-level `data` là array of family groups. Mỗi group:
+Top-level `data` là array of groups. Mỗi group:
 
 | Field | Kiểu | Mô tả |
 |---|---|---|
-| `family` | string | Vd `"VPS Standard"`, `"VPS Pro"`. |
-| `family_code` | string | Mã family (xem [Product families](/concepts/product-families)). |
-| `plans` | array | Danh sách plan thuộc family. |
+| `group` | string | Vd `"VPS Standard"`, `"VPS Pro"`. |
+| `group_code` | string | Mã group (xem [Product families](/concepts/product-groups)). |
+| `plans` | array | Danh sách plan thuộc group. |
 
 Mỗi plan:
 
@@ -51,10 +51,10 @@ Mỗi plan:
 | `type` | string | `"vps"`. |
 | `service_type` | string | Phân loại. |
 | `price` | number | Giá hiển thị (VND). |
-| `family` / `family_code` | string | (Trùng group) |
-| `capabilities` | object | 9 capability flag mặc định cho family VPS. |
+| `group` / `group_code` | string | (Trùng group) |
+| `capabilities` | object | 9 capability flag mặc định cho group VPS. |
 | `client_features.fixed_addon_pricing` | boolean | Pricing fixed cho upgrade? |
-| `client_features.disk_step` | integer | Bước upgrade disk (GB) — đọc giá trị này để hiển thị đúng UI control, không hardcode theo family. |
+| `client_features.disk_step` | integer | Bước upgrade disk (GB) — đọc giá trị này để hiển thị đúng UI control, không hardcode theo group. |
 | `badges` | string[] | Tag marketing: `"gpu"`, `"best_seller"`, … |
 | `options` | object | OS, region khả dụng. |
 
@@ -67,8 +67,8 @@ Mỗi plan:
   "code": "ok",
   "data": [
     {
-      "family": "VPS Standard",
-      "family_code": "vps_standard",
+      "group": "VPS Standard",
+      "group_code": "vps_standard",
       "plans": [
         {
           "id": 5,
@@ -79,8 +79,8 @@ Mỗi plan:
           "type": "vps",
           "service_type": "vietnam_vps",
           "price": 140000,
-          "family": "VPS Standard",
-          "family_code": "vps_standard",
+          "group": "VPS Standard",
+          "group_code": "vps_standard",
           "capabilities": {
             "console":           { "can": true, "reason": null },
             "network":           { "can": true, "reason": null },
@@ -103,20 +103,20 @@ Mỗi plan:
       ]
     },
     {
-      "family": "VPS Pro",
-      "family_code": "vps_pro",
+      "group": "VPS Pro",
+      "group_code": "vps_pro",
       "plans": [
         {
           "id": 34,
           "name": "VPS Pro — 4 CPU / 8GB / 100GB",
-          "family": "VPS Pro",
-          "family_code": "vps_pro",
+          "group": "VPS Pro",
+          "group_code": "vps_pro",
           "capabilities": {
-            "console":           { "can": false, "reason": "family_unsupported" },
-            "network":           { "can": false, "reason": "family_unsupported" },
-            "credentials":       { "can": false, "reason": "family_unsupported" },
-            "change_password":   { "can": false, "reason": "family_unsupported" },
-            "upgrade_bandwidth": { "can": false, "reason": "family_unsupported" },
+            "console":           { "can": false, "reason": "group_unsupported" },
+            "network":           { "can": false, "reason": "group_unsupported" },
+            "credentials":       { "can": false, "reason": "group_unsupported" },
+            "change_password":   { "can": false, "reason": "group_unsupported" },
+            "upgrade_bandwidth": { "can": false, "reason": "group_unsupported" },
             "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
             "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
             "upgrade":           { "can": true, "fixed_pricing": true, "disk_step_gb": 10, "reason": null },
@@ -145,7 +145,7 @@ Mỗi plan:
 ## Business notes
 
 - Chỉ trả về plan `status = 'active'`.
-- Mỗi family có chính sách pricing addon khác nhau — đọc từ `client_features.fixed_addon_pricing` và `client_features.disk_step` (per-plan), **không hardcode** theo `family_code`.
+- Mỗi group có chính sách pricing addon khác nhau — đọc từ `client_features.fixed_addon_pricing` và `client_features.disk_step` (per-plan), **không hardcode** theo `group_code`.
 - `badges` dùng để hiển thị tag marketing (vd "Best Seller", "GPU available").
 - Frontend nên cache 5–15 phút.
 
@@ -153,5 +153,5 @@ Mỗi plan:
 
 - [Lấy options chi tiết một plan](/catalog/fetch-product-options)
 - [Mua VPS](/vps/pay)
-- [Product families](/concepts/product-families)
+- [Product families](/concepts/product-groups)
 - [Capabilities](/concepts/capabilities)

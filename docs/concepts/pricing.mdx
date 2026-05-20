@@ -9,7 +9,7 @@ khi gọi action có thể tính phí, **luôn đọc `capabilities.<action>.cos
 
 ## Tổng kết action
 
-### ✅ Miễn phí (mọi family)
+### ✅ Miễn phí (mọi group)
 
 | Action | Endpoint |
 |---|---|
@@ -34,7 +34,7 @@ khi gọi action có thể tính phí, **luôn đọc `capabilities.<action>.cos
 |---|---|---|---|
 | Mua proxy / VPS | `/customer/proxy/pay`, `/customer/vps/pay` | Luôn | Catalog response trả `price` per plan |
 | Gia hạn | `/customer/proxy/renew-proxy`, `/customer/vps/renew-vps` | Luôn | `capabilities.renew` |
-| Đổi IP proxy | `/customer/proxy/change-proxy-ip` | Tuỳ family + runtime | `capabilities.change_ip.cost` ≥ 0 |
+| Đổi IP proxy | `/customer/proxy/change-proxy-ip` | Tuỳ group + runtime | `capabilities.change_ip.cost` ≥ 0 |
 | Nâng cấp VPS (CPU/RAM/Disk/IP) | `/customer/vps/upgrade` | Luôn | Catalog options trả price components |
 | Nâng tốc độ mạng VPS | `/customer/vps/upgrade-bandwidth` | Luôn | Tính theo speed mới × diff |
 
@@ -169,7 +169,7 @@ summary cho khách hàng cuối.
 <Warning>
 **Không bao giờ** hardcode cost trong client. Đọc từ
 `capabilities.<action>.cost` hoặc từ catalog options runtime — giá có thể
-đổi theo policy, family, hoặc runtime state.
+đổi theo policy, group, hoặc runtime state.
 </Warning>
 
 <Warning>

@@ -5,12 +5,12 @@ description: "Tạo đơn hàng VPS mới — chọn plan, OS, location, cấu h
 
 `POST /api/v2/customer/vps/pay`
 
-Tạo đơn VPS mới. Số tiền trừ từ `balance` user. Support nhiều family VPS
+Tạo đơn VPS mới. Số tiền trừ từ `balance` user. Support nhiều group VPS
 (Standard / Pro / Basic / Performance / Streaming / Custom / Promo) — UI
 nên gọi [`fetch-product-options`](/catalog/fetch-product-options) trước
 để biết options khả dụng cho plan.
 
-**Áp dụng cho**: Mọi family VPS
+**Áp dụng cho**: Mọi group VPS
 **Auth**: Bearer token
 
 ## Request
@@ -39,7 +39,7 @@ nên gọi [`fetch-product-options`](/catalog/fetch-product-options) trước
 | `coupon_code` | string | không | Mã coupon. |
 
 <Info>
-Mỗi family có chính sách pricing addon khác nhau:
+Mỗi group có chính sách pricing addon khác nhau:
 - `client_features.fixed_addon_pricing = true` → giá addon (CPU/RAM/Disk)
   trọn gói cố định. Lấy giá từ `client_features.fixed_addon_prices`.
 - `client_features.fixed_addon_pricing = false` → giá addon per-unit

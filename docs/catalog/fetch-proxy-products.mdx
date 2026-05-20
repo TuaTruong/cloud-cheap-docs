@@ -1,15 +1,15 @@
 ---
 title: "Danh sách sản phẩm Proxy"
-description: "Catalog các gói Proxy active, nhóm theo product family, kèm capabilities mặc định"
+description: "Catalog các gói Proxy active, nhóm theo product group, kèm capabilities mặc định"
 ---
 
 `GET /api/v2/fetch-proxy-products`
 
 Trả về toàn bộ sản phẩm Proxy đang active trên hệ thống, **nhóm theo
-product family**. Mỗi plan có sẵn `family`, `family_code` và
+product group**. Mỗi plan có sẵn `group`, `group_code` và
 `capabilities` mặc định — bạn dùng để render catalog phía UI.
 
-**Áp dụng cho**: Mọi family Proxy
+**Áp dụng cho**: Mọi group Proxy
 **Auth**: Không bắt buộc
 **Rate limit**: Không có
 
@@ -32,13 +32,13 @@ curl 'https://cloud-cheap.com/api/v2/fetch-proxy-products?locale=vi' \
 
 ### Schema
 
-Top-level `data` là **array of family groups**. Mỗi group:
+Top-level `data` là **array of groups**. Mỗi group:
 
 | Field | Kiểu | Mô tả |
 |---|---|---|
-| `family` | string | Tên hiển thị family (vd `"Proxy IPv4 Datacenter"`). |
-| `family_code` | string | Mã family (xem [Product families](/concepts/product-families)). |
-| `plans` | array | Danh sách plan thuộc family này. |
+| `group` | string | Tên hiển thị group (vd `"Proxy IPv4 Datacenter"`). |
+| `group_code` | string | Mã group (xem [Product families](/concepts/product-groups)). |
+| `plans` | array | Danh sách plan thuộc group này. |
 
 Mỗi plan trong `plans`:
 
@@ -55,12 +55,12 @@ Mỗi plan trong `plans`:
 | `price_unit` | string | `"day"`, `"month"`, `"gb"`. |
 | `price_duration` | integer | Số đơn vị tương ứng. |
 | `package_quantity` | integer | Số proxy mỗi gói. |
-| `family` | string | (Trùng family group) |
-| `family_code` | string | (Trùng family group) |
-| `capabilities` | object | Capability mặc định cho family. Xem [Capabilities](/concepts/capabilities). |
+| `group` | string | (Trùng group) |
+| `group_code` | string | (Trùng group) |
+| `capabilities` | object | Capability mặc định cho group. Xem [Capabilities](/concepts/capabilities). |
 | `options` | object | Options khả dụng (protocol, region, days, …). |
 | `auto_renew_enabled` | boolean | Có hỗ trợ auto-renew không. |
-| `is_bandwidth_plan` | boolean | Là gói bandwidth GB không (`true` cho family `proxy_bandwidth`). |
+| `is_bandwidth_plan` | boolean | Là gói bandwidth GB không (`true` cho group `proxy_bandwidth`). |
 
 ### Ví dụ
 
@@ -71,8 +71,8 @@ Mỗi plan trong `plans`:
   "code": "ok",
   "data": [
     {
-      "family": "Proxy IPv4 Datacenter",
-      "family_code": "proxy_ipv4_datacenter",
+      "group": "Proxy IPv4 Datacenter",
+      "group_code": "proxy_ipv4_datacenter",
       "plans": [
         {
           "id": 12,
@@ -86,12 +86,12 @@ Mỗi plan trong `plans`:
           "price_unit": "day",
           "price_duration": 30,
           "package_quantity": 1,
-          "family": "Proxy IPv4 Datacenter",
-          "family_code": "proxy_ipv4_datacenter",
+          "group": "Proxy IPv4 Datacenter",
+          "group_code": "proxy_ipv4_datacenter",
           "capabilities": {
             "change_ip":          { "can": true, "cost": 0, "reason": null },
             "change_auth":        { "can": true, "auth_types": ["user_pass"], "reason": null },
-            "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+            "change_rotate_time": { "can": false, "reason": "group_unsupported" },
             "renew":              { "can": true, "min_days": 3, "reason": null },
             "auto_renew":         { "can": true, "reason": null },
             "export":             { "can": true, "reason": null },
@@ -108,8 +108,8 @@ Mỗi plan trong `plans`:
       ]
     },
     {
-      "family": "Proxy Bandwidth (GB)",
-      "family_code": "proxy_bandwidth",
+      "group": "Proxy Bandwidth (GB)",
+      "group_code": "proxy_bandwidth",
       "plans": [/* ... */]
     }
   ],
@@ -131,7 +131,7 @@ Endpoint không có lỗi business — trường hợp xấu nhất là `data: [
 
 - Chỉ trả về sản phẩm `status = 'active'`.
 - Plan đã ngừng bán / loại khỏi danh mục **không xuất hiện**.
-- `capabilities` ở đây là **default theo family** — record proxy thực
+- `capabilities` ở đây là **default theo group** — record proxy thực
   tế (`customer/proxy/list`) có thể có capability khác do runtime override.
 - Frontend nên cache response này 5–15 phút.
 
@@ -139,5 +139,5 @@ Endpoint không có lỗi business — trường hợp xấu nhất là `data: [
 
 - [Lấy options chi tiết một plan](/catalog/fetch-product-options)
 - [Mua proxy](/proxy/pay)
-- [Product families](/concepts/product-families)
+- [Product families](/concepts/product-groups)
 - [Capabilities](/concepts/capabilities)

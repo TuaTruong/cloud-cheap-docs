@@ -1,15 +1,15 @@
 ---
 title: "Danh sách proxy"
-description: "Liệt kê proxy của tài khoản, kèm family + capabilities cho mỗi record"
+description: "Liệt kê proxy của tài khoản, kèm group + capabilities cho mỗi record"
 ---
 
 `GET /api/v2/customer/proxy/list`
 
-Lấy danh sách proxy user đang sở hữu. Mỗi record có sẵn `family`,
-`family_code`, `capabilities` (đã áp runtime override) — bạn dùng để
+Lấy danh sách proxy user đang sở hữu. Mỗi record có sẵn `group`,
+`group_code`, `capabilities` (đã áp runtime override) — bạn dùng để
 render UI quản lý proxy.
 
-**Áp dụng cho**: Mọi family Proxy
+**Áp dụng cho**: Mọi group Proxy
 **Auth**: Bearer token
 **Rate limit**: Không có
 
@@ -45,7 +45,7 @@ curl 'https://cloud-cheap.com/api/v2/customer/proxy/list?per_page=20&status=acti
 | Field | Kiểu | Mô tả |
 |---|---|---|
 | `id` | integer | Proxy ID nội bộ. |
-| `family` / `family_code` | string | Family hiển thị + machine code. |
+| `group` / `group_code` | string | Group hiển thị + machine code. |
 | `public_ip` | string | IP công khai. |
 | `port` | integer | Cổng truy cập. |
 | `protocol` | string | `"http"` / `"socks5"`. |
@@ -79,8 +79,8 @@ curl 'https://cloud-cheap.com/api/v2/customer/proxy/list?per_page=20&status=acti
   "data": [
     {
       "id": 5678,
-      "family": "Proxy IPv4 Datacenter",
-      "family_code": "proxy_ipv4_datacenter",
+      "group": "Proxy IPv4 Datacenter",
+      "group_code": "proxy_ipv4_datacenter",
       "public_ip": "203.0.113.45",
       "port": 8080,
       "protocol": "http",
@@ -99,7 +99,7 @@ curl 'https://cloud-cheap.com/api/v2/customer/proxy/list?per_page=20&status=acti
       "capabilities": {
         "change_ip":          { "can": true, "cost": 0, "reason": null },
         "change_auth":        { "can": true, "auth_types": ["user_pass"], "reason": null },
-        "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+        "change_rotate_time": { "can": false, "reason": "group_unsupported" },
         "renew":              { "can": true, "min_days": 3, "reason": null },
         "auto_renew":         { "can": true, "reason": null },
         "export":             { "can": true, "reason": null },
@@ -124,8 +124,8 @@ curl 'https://cloud-cheap.com/api/v2/customer/proxy/list?per_page=20&status=acti
 ## Business notes
 
 - Field `provider`, `cost_price`, `provider_response`, `provider_extra`, `internal_extra` **không bao giờ** xuất hiện.
-- `capabilities` đã apply runtime override (vd `change_ip.can = false` nếu proxy này không hỗ trợ dù family hỗ trợ).
-- UI nên render nút thao tác **theo `capabilities`**, không hard-code theo `family_code`.
+- `capabilities` đã apply runtime override (vd `change_ip.can = false` nếu proxy này không hỗ trợ dù group hỗ trợ).
+- UI nên render nút thao tác **theo `capabilities`**, không hard-code theo `group_code`.
 
 ## Liên quan
 

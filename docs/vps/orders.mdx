@@ -31,7 +31,7 @@ Mỗi order:
 |---|---|---|
 | `id` | integer | Order ID. |
 | `order_number` | string | Mã đơn. |
-| `family` / `family_code` | string | Family VPS trong đơn. |
+| `group` / `group_code` | string | Group VPS trong đơn. |
 | `quantity` | integer | Số VPS trong đơn. |
 | `period` | string | Chu kỳ thanh toán. |
 | `price` | number | Tổng tiền đơn (VND). |
@@ -50,8 +50,8 @@ Mỗi order:
     {
       "id": 5001,
       "order_number": "ORD-VPS-001",
-      "family": "VPS Standard",
-      "family_code": "vps_standard",
+      "group": "VPS Standard",
+      "group_code": "vps_standard",
       "quantity": 1,
       "period": "monthly",
       "price": 140000,

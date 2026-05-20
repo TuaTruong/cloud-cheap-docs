@@ -6,11 +6,11 @@ description: "Yêu cầu hệ thống cấp IP mới cho proxy — có thể mi�
 `POST /api/v2/customer/proxy/change-proxy-ip`
 
 Yêu cầu đổi IP cho một proxy đang sử dụng. Có thể **miễn phí** hoặc **mất phí**
-tuỳ family + plan + state runtime — đọc `capabilities.change_ip` để biết
+tuỳ group + plan + state runtime — đọc `capabilities.change_ip` để biết
 chi phí trước khi gọi.
 
 **Áp dụng cho**: Proxy có `capabilities.change_ip.can = true`. Một số
-family không hỗ trợ — đọc capability runtime trước khi cho user click.
+group không hỗ trợ — đọc capability runtime trước khi cho user click.
 **Auth**: Bearer token
 **Rate limit**: Không có
 

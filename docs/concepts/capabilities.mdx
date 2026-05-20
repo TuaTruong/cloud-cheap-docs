@@ -6,7 +6,7 @@ description: "Object capabilities — cho biết action nào áp dụng cho từ
 ## Bài toán
 
 Reseller UI cần hiển thị / ẩn các nút thao tác (Đổi IP, Đổi auth,
-Console, …) tuỳ theo từng proxy / VPS. Mỗi family hỗ trợ tập tính năng
+Console, …) tuỳ theo từng proxy / VPS. Mỗi group hỗ trợ tập tính năng
 khác nhau, và đôi khi runtime state (vd VPS đang provisioning) cũng làm
 một số action tạm thời không khả dụng.
 
@@ -29,7 +29,7 @@ Khi `can = false`, `reason` cho biết lý do (machine-readable):
 ```json
 {
   "can": false,
-  "reason": "family_unsupported"
+  "reason": "group_unsupported"
 }
 ```
 
@@ -63,15 +63,15 @@ Trả về tại `GET /api/v2/customer/proxy/list` cho mỗi record proxy:
 ```json
 {
   "id": 1234,
-  "family": "Proxy IPv4 Datacenter",
-  "family_code": "proxy_ipv4_datacenter",
+  "group": "Proxy IPv4 Datacenter",
+  "group_code": "proxy_ipv4_datacenter",
   "public_ip": "1.2.3.4",
   "port": 8080,
   /* ... */
   "capabilities": {
     "change_ip":          { "can": true,  "cost": 0,    "reason": null },
     "change_auth":        { "can": true,  "auth_types": ["user_pass"], "reason": null },
-    "change_rotate_time": { "can": false, "reason": "family_unsupported" },
+    "change_rotate_time": { "can": false, "reason": "group_unsupported" },
     "renew":              { "can": true,  "min_days": 3, "reason": null },
     "auto_renew":         { "can": true,  "reason": null },
     "export":             { "can": true,  "reason": null },
@@ -135,11 +135,11 @@ Trả về tại `GET /api/v2/customer/vps/list`:
 
 ```json
 "capabilities": {
-  "console":           { "can": false, "reason": "family_unsupported" },
-  "network":           { "can": false, "reason": "family_unsupported" },
-  "credentials":       { "can": false, "reason": "family_unsupported" },
-  "change_password":   { "can": false, "reason": "family_unsupported" },
-  "upgrade_bandwidth": { "can": false, "reason": "family_unsupported" },
+  "console":           { "can": false, "reason": "group_unsupported" },
+  "network":           { "can": false, "reason": "group_unsupported" },
+  "credentials":       { "can": false, "reason": "group_unsupported" },
+  "change_password":   { "can": false, "reason": "group_unsupported" },
+  "upgrade_bandwidth": { "can": false, "reason": "group_unsupported" },
   "power_control":     { "can": true, "actions": ["start","stop","reboot","shutdown"], "reason": null },
   "config":            { "can": true, "actions": ["reinstall","reset-root-pwd","change-ip"], "reason": null },
   "upgrade":           { "can": true, "fixed_pricing": true, "disk_step_gb": 10, "reason": null },
@@ -157,7 +157,7 @@ vào client.
 
 | Code | Khi nào |
 |---|---|
-| `family_unsupported` | Family này không bao giờ hỗ trợ action (vd Console cho VPS Pro). |
+| `group_unsupported` | Group này không bao giờ hỗ trợ action (vd Console cho VPS Pro). |
 | `plan_unsupported` | Plan cụ thể bị disable bởi business rule. |
 | `not_static` | Yêu cầu proxy static mà record là rotating. |
 | `bandwidth_only` | Action chỉ áp dụng cho gói bandwidth GB (hoặc ngược lại). |
@@ -200,7 +200,7 @@ function ProxyActions({ proxy }) {
 
 function tooltipFor(reason) {
   switch (reason) {
-    case 'family_unsupported': return 'Loại proxy này không hỗ trợ';
+    case 'group_unsupported': return 'Loại proxy này không hỗ trợ';
     case 'not_static':         return 'Chỉ dùng cho proxy static';
     case 'bandwidth_only':     return 'Tính năng chỉ cho gói bandwidth';
     default:                   return 'Không khả dụng';
@@ -213,4 +213,4 @@ function tooltipFor(reason) {
 <Success>**Mỗi record có đầy đủ tất cả flag** — không có flag bị thiếu.</Success>
 <Success>Khi `can = false`, `reason` **luôn có** giá trị non-null.</Success>
 <Success>Khi `can = true`, `reason = null`.</Success>
-<Success>Capability tính cả default theo family **và** runtime state — bạn nhận được kết quả cuối.</Success>
+<Success>Capability tính cả default theo group **và** runtime state — bạn nhận được kết quả cuối.</Success>

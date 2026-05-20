@@ -1,0 +1,182 @@
+---
+title: "Product families"
+description: "Sản phẩm được phân loại theo tính năng — danh sách group bạn discover ở runtime"
+---
+
+## Group là gì?
+
+**Group** là cách hệ thống phân loại sản phẩm thành các **nhóm có cùng
+tính năng và surface action**. Mỗi sản phẩm thuộc đúng một group.
+
+Ví dụ: hai gói proxy khác nhau (khác giá, khác region) nếu có cùng
+đặc tính (vd "IPv4 datacenter, IP cố định") sẽ thuộc cùng group — UI
+và logic phía bạn xử lý chúng **giống hệt nhau**.
+
+<Info>
+Group là **contract về tính năng**. Hệ thống có thể thêm hoặc loại bỏ
+group trong tương lai mà không thông báo trước — client phải đọc danh
+sách group active từ **response runtime**, không hardcode.
+</Info>
+
+## Cách dùng group
+
+### 1. Discover group ở runtime
+
+Đừng hardcode danh sách group — gọi catalog endpoint để biết group
+nào đang active:
+
+```bash
+GET /api/v2/fetch-proxy-products
+GET /api/v2/fetch-vps-products
+```
+
+Response trả về array các **group**, mỗi group có `group`
+(tên hiển thị) + `group_code` (machine code) + `plans` (danh sách
+plan trong group).
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "group": "<Tên hiển thị>",
+      "group_code": "<machine_code>",
+      "plans": [
+        { "id": 10, "name": "...", "price": 50000, "capabilities": { /* ... */ }, /* ... */ }
+      ]
+    },
+    {
+      "group": "<Tên group khác>",
+      "group_code": "<machine_code_khác>",
+      "plans": [/* ... */]
+    }
+  ]
+}
+```
+
+### 2. Render UI động theo response
+
+```jsx
+function ProductCatalog({ catalog }) {
+  return catalog.data.map(group => (
+    <Tab key={group.group_code} title={group.group}>
+      {group.plans.map(plan => (
+        <PlanCard plan={plan} group={group.group_code} />
+      ))}
+    </Tab>
+  ));
+}
+```
+
+UI **không cần biết** group nào tồn tại trước — render theo data trả về.
+
+### 3. Quyết định hành vi theo `group_code`
+
+Mỗi plan trong group có `group_code` để bạn dispatch logic:
+
+```js
+function flowForGroup(groupCode) {
+  // Logic theo từng group_code — không hardcode list
+  // Group chưa biết: fallback an toàn
+}
+
+function pricingNoteFor(groupCode) {
+  // Hiển thị note đặc thù theo group_code
+  // Không assume group_code cụ thể nào sẽ tồn tại
+}
+```
+
+### 4. Quyết định bằng `capabilities`, không qua `group_code`
+
+Khi muốn biết action nào áp dụng cho từng record proxy/VPS, đừng switch
+trên `group_code` — đọc trực tiếp `capabilities`:
+
+```js
+// Tốt
+if (proxy.capabilities.change_ip.can) { showChangeIpButton(); }
+
+// Không nên
+if (proxy.group_code === 'proxy_ipv4_datacenter') { showChangeIpButton(); }
+```
+
+Lý do: `capabilities` đã áp **runtime override** (state thực của record),
+còn `group_code` chỉ cho biết loại sản phẩm.
+
+## Khi group tạm thời không có sản phẩm
+
+Đôi khi một group được hệ thống định nghĩa nhưng **không có SKU nào
+active** trong catalog (vd: đang điều chỉnh danh mục, tạm dừng dòng
+sản phẩm).
+
+Khi đó:
+
+- `fetch-*-products` **không trả về group cho group** đó.
+- UI phía bạn nên **degrade gracefully** — không render tab rỗng, không
+  hardcode list group expected.
+- Khi catalog khôi phục, group sẽ xuất hiện trở lại — client
+  không cần update.
+
+```js
+// Code này robust trước mọi thay đổi group list
+catalog.data.forEach(group => {
+  if (group.plans.length === 0) return; // bỏ qua group rỗng (hiếm)
+  renderTab(group.group, group.group_code, group.plans);
+});
+```
+
+## Cấu trúc flow cơ bản theo loại sản phẩm
+
+Dù group cụ thể có thể đổi, **flow chung** cho mua / quản lý vẫn ổn định:
+
+<CardGroup cols={3}>
+  <Card title="Proxy non-bandwidth" icon="globe">
+    Mua theo `quantity` × period → trả về danh sách proxy có `expired_at`.
+    Hành động trên từng proxy theo `capabilities` runtime.
+  </Card>
+  <Card title="Proxy Bandwidth" icon="gauge">
+    Mua theo `bandwidth_gb` → mở một gói GB → **generate** proxy list
+    từ pool theo filter (country, ASN, sticky/rotating).
+  </Card>
+  <Card title="VPS" icon="server">
+    Mua theo `period` + config → trả về VPS record. Power control,
+    reinstall, upgrade — đều theo `capabilities` runtime.
+  </Card>
+</CardGroup>
+
+Phân biệt 3 flow này qua field `type` của plan trong catalog
+(`"proxy"` / `"vps"`) và flag `capabilities.bandwidth_package.is_bandwidth`
+(cho proxy bandwidth).
+
+## Best practice
+
+<Info>
+Client cần **3 nguyên tắc** khi tích hợp:
+
+1. **Discover** group list từ catalog runtime — không hardcode.
+2. **Render** UI động theo response — không assume group nào sẽ tồn tại.
+3. **Decision** dùng `capabilities` không qua `group_code` cụ thể.
+</Info>
+
+<Warning>
+**Không parse `name` / `plan` / `external_*`** của sản phẩm để đoán
+thông tin nội bộ. Hệ thống cố tình ẩn — catalog có thể đổi mà không
+báo trước.
+</Warning>
+
+<Warning>
+**Không hardcode danh sách `group_code`** trong client. Lấy danh sách
+group đang active từ `fetch-*-products` mỗi lần render, hoặc cache
+ngắn (5–15 phút).
+</Warning>
+
+<Warning>
+Một số `group_code` có thể bị **xóa** trong tương lai khi sản phẩm
+ngừng bán. Client phải handle case `group_code` không nhận diện
+được (fallback hiển thị plan bằng `name` + `capabilities`).
+</Warning>
+
+## Liên quan
+
+- [Capabilities](/concepts/capabilities) — flag action runtime cho mỗi record
+- [Catalog Proxy](/catalog/fetch-proxy-products) — endpoint discover proxy families
+- [Catalog VPS](/catalog/fetch-vps-products) — endpoint discover VPS families

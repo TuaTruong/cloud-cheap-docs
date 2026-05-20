@@ -6,7 +6,7 @@ description: "Thêm tài nguyên cho VPS — trả phí addon"
 `POST /api/v2/customer/vps/upgrade`
 
 Nâng cấp CPU, RAM, Disk, hoặc số IP cho VPS. Mỗi addon tính phí riêng
-theo `capabilities.upgrade.fixed_pricing` của family.
+theo `capabilities.upgrade.fixed_pricing` của group.
 
 **Áp dụng cho**: VPS có `capabilities.upgrade.can = true`
 **Auth**: Bearer token
@@ -28,7 +28,7 @@ Phải có **ít nhất một** trong `upgrade_cpu`, `upgrade_ram`, `upgrade_dis
 `upgrade_disk` phải là **bội số của `capabilities.upgrade.disk_step_gb`**
 của VPS đang upgrade. Đọc giá trị này từ response của
 [`/customer/vps/list`](/vps/list) tại runtime — không hardcode.
-Với một số family, `disk_step_gb` có thể lớn hơn 1 (vd 5, 10) — luôn đọc giá trị runtime, không hardcode.
+Với một số group, `disk_step_gb` có thể lớn hơn 1 (vd 5, 10) — luôn đọc giá trị runtime, không hardcode.
 </Warning>
 
 ### Ví dụ — thêm 2 CPU + 4 GB RAM
@@ -88,7 +88,7 @@ curl -X POST 'https://cloud-cheap.com/api/v2/customer/vps/upgrade' \
 
 ## Business notes
 
-- Giá addon = `addon_per_unit × quantity` (cho family per-unit pricing) hoặc lookup table (cho family `fixed_pricing`).
+- Giá addon = `addon_per_unit × quantity` (cho group per-unit pricing) hoặc lookup table (cho group `fixed_pricing`).
 - Upgrade **không reboot** VPS (đa số trường hợp). Một số hệ thống yêu cầu reboot — `action_status` sẽ là `upgrading_rebooting`.
 - Không thể **downgrade** qua endpoint này. Liên hệ support nếu cần.
 - Disk thêm chỉ allocate, **không expand filesystem** tự động — bạn cần resize2fs / partprobe phía VPS.
