@@ -145,7 +145,7 @@ Mỗi plan:
 ## Business notes
 
 - Chỉ trả về plan `status = 'active'`.
-- **VPS Pro** dùng `fixed_addon_pricing = true` + `disk_step_gb = 10` — UI render giá upgrade khác với Standard.
+- Mỗi family có chính sách pricing addon khác nhau — đọc từ `client_features.fixed_addon_pricing` và `client_features.disk_step` (per-plan), **không hardcode** theo `family_code`.
 - `badges` dùng để hiển thị tag marketing (vd "Best Seller", "GPU available").
 - Frontend nên cache 5–15 phút.
 

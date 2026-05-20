@@ -39,9 +39,13 @@ nên gọi [`fetch-product-options`](/catalog/fetch-product-options) trước
 | `coupon_code` | string | không | Mã coupon. |
 
 <Info>
-Với **VPS Pro**: `cpu_plus`, `ram_plus`, `disk_plus` dùng pricing fixed +
-`disk_plus` phải là bội số của 10 (`disk_step_gb = 10` từ `capabilities`).
-Với các family khác: pricing per-unit, `disk_plus` step = 1.
+Mỗi family có chính sách pricing addon khác nhau:
+- `client_features.fixed_addon_pricing = true` → giá addon (CPU/RAM/Disk)
+  trọn gói cố định. Lấy giá từ `client_features.fixed_addon_prices`.
+- `client_features.fixed_addon_pricing = false` → giá addon per-unit
+  (theo công thức trong [catalog options](/catalog/fetch-product-options)).
+- `client_features.disk_step` → step bắt buộc cho `disk_plus`. Đọc
+  giá trị từ catalog plan tại runtime; không hardcode.
 </Info>
 
 ### Ví dụ

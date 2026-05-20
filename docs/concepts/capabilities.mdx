@@ -147,8 +147,11 @@ Trả về tại `GET /api/v2/customer/vps/list`:
 }
 ```
 
-VPS Pro **dùng pricing fixed** + **disk step 10 GB** — phía UI bạn render
-giá theo cách khác Standard.
+VPS Pro **có thể dùng pricing fixed + disk step > 1** — UI render giá
+upgrade theo `capabilities.upgrade.fixed_pricing` và
+`capabilities.upgrade.disk_step_gb` ở runtime. Các giá trị cụ thể có
+thể thay đổi tuỳ backend; bạn **không hardcode** giá trị từ ví dụ trên
+vào client.
 
 ## Bảng `reason` codes
 
